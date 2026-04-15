@@ -7,7 +7,7 @@ Un framework de agentes IA coordinados que construye proyectos dbt completos a p
 El orquestador (`CLAUDE.md`) dirige un equipo de 7 subagentes especializados a través de un flujo con approval gates humanos en cada fase:
 
 ```
-Requisito → Spec → Diseño técnico → Tareas → Implementación paralela → Validación → Deploy dbt Cloud
+Requisito → Spec → Diseño técnico → Tareas → Implementación paralela → Validación → Deploy dbt Platform
 ```
 
 Cada fase produce artefactos trazables: el `requirements.md` traza a las preguntas de negocio, que trazan a los modelos, que trazan a los tests. Si el regulador pregunta "¿de dónde sale este dato?", la respuesta está en el spec.
@@ -81,14 +81,14 @@ Genera el requirements.md cruzando las tres fuentes.
 # Claude Code v2.1.32+
 claude --version
 
-# dbt Core o dbt Cloud CLI
+# dbt Core o dbt Platform CLI
 dbt --version
 
 # Node.js (para skills installer)
 node --version
 ```
 
-**Para Phase 6 (deploy a dbt Cloud):**
+**Para Phase 6 (deploy a dbt Platform):**
 
 ```bash
 # Terraform CLI
@@ -190,7 +190,7 @@ tu-proyecto-dbt/
 │       ├── tasks.md
 │       ├── review.md
 │       └── progress.md
-├── terraform/                         ← Fase 6: Infraestructura dbt Cloud
+├── terraform/                         ← Fase 6: Infraestructura dbt Platform
 │   ├── main.tf                        ← Recursos: proyecto, conexión, entornos, jobs, SL
 │   ├── variables.tf
 │   ├── outputs.tf
@@ -289,18 +289,18 @@ Mostrar el review report con:
 >
 > "Esto es dbt Platform + AI agents para un equipo de datos bancario."
 
-### Acto 6b (bonus): Deploy a dbt Cloud con Terraform (3 min)
+### Acto 6b (bonus): Deploy a dbt Platform con Terraform (3 min)
 
 Si se quiere mostrar el aprovisionamiento completo:
 
 ```bash
-cp .env.example .env   # rellenar con credenciales dbt Cloud + Snowflake
+cp .env.example .env   # rellenar con credenciales dbt Platform + Snowflake
 source .env
 cd terraform && terraform apply
 ```
 
 El agente `dbt-infra` provisiona automáticamente via Terraform:
-- Proyecto dbt Cloud + conexión Snowflake
+- Proyecto dbt Platform + conexión Snowflake
 - Entornos Development / Staging / Production (con branch custom)
 - Job diario (`dbt build`) + Slim CI (PR webhook)
 - Semantic Layer configuration + service token
@@ -330,7 +330,7 @@ Semantic Layer → list_metrics → query_metrics → resultado
 |--------|-------------|-----------------|--------|
 | Banca | Riesgo de cartera de préstamos (esta demo) | Core Banking → BigQuery/Snowflake | Governance + regulación |
 | Banca | Dashboard de banca digital + Semantic Layer | Core Banking → BigQuery | Self-service analytics |
-| Banca / DataOps | Observabilidad de pipelines dbt Cloud + alertas | Admin API + webhooks | DataOps / SRE |
+| Banca / DataOps | Observabilidad de pipelines dbt Platform + alertas | Admin API + webhooks | DataOps / SRE |
 | Retail | Forecast de demanda por tienda/SKU | ERP → BigQuery | Incremental a escala |
 | Seguros | Análisis de siniestralidad por producto/canal | Core Seguros → BigQuery | IFRS 17 + provisiones |
 
