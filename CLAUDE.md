@@ -118,6 +118,22 @@ This gives agents your actual table names, column types, lineage graph, and tran
 2. Subagent produces `specs/{feature_name}/review.md`
 3. Present review findings to user
 4. If critical issues found: loop back to Phase 4 for specific tasks
+5. Update `progress.md`: Phase 5 complete
+
+### Phase 6: Deploy to dbt Cloud (dbt-infra) — optional
+
+**Trigger:** User approves the review AND wants to deploy to dbt Cloud.
+
+Ask the user explicitly:
+> "El review está aprobado. ¿Quieres provisionar el proyecto en dbt Cloud ahora? Necesitaré las credenciales de dbt Cloud y del warehouse."
+
+If yes:
+1. Launch `dbt-infra` subagent with path to `specs/{feature_name}/requirements.md`
+2. Subagent provisions: dbt Cloud project, connection, environments (dev/staging/prod), Slim CI job, daily build jobs, Semantic Layer, and `.mcp.json`
+3. Update `progress.md`: Phase 6 complete — include dbt Cloud project URL
+4. **GATE: Do NOT proceed until user confirms infrastructure is up**
+
+If no: mark Phase 6 as skipped in `progress.md` and close the workflow.
 
 ## Critical Rules
 
