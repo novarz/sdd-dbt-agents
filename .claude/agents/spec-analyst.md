@@ -27,7 +27,8 @@ Transform a business need described in natural language into a formal `requireme
    - **R**esult: So that [outcome]...
    - **S**tate: While [condition] holds...
 7. **Out of Scope** — Explicitly what this feature does NOT include
-8. **Assumptions & Open Questions**
+8. **Warehouse Platform** — Which data warehouse will be used. If not stated by the user, leave as `TBD` and add it to Open Questions. Never assume a specific platform.
+9. **Assumptions & Open Questions**
 
 ## Process
 
@@ -104,7 +105,17 @@ Preguntas concretas que el equipo espera poder responder. Cada pregunta guía qu
 
 - {item}
 
-## 6. Estrategia de Deployment
+## 6. Plataforma de Warehouse
+
+| Parámetro | Valor |
+|-----------|-------|
+| Warehouse | {BigQuery / Snowflake / Databricks / Redshift / DuckDB / TBD} |
+| Proyecto/Account | {nombre o TBD} |
+| Dataset/Schema por entorno | dev: `dbt_dev_{usuario}` / staging: `dbt_ci` / prod: `analytics_prod` |
+
+> Si no se ha especificado, dejar como `TBD` y añadir a Preguntas Abiertas. El arquitecto usará este campo para decidir configs de materialización específicas de plataforma.
+
+## 7. Estrategia de Deployment
 
 ### Entornos
 

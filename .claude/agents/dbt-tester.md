@@ -32,32 +32,52 @@ This agent complements two dbt agent skills:
 
 3. **Write tests** following the hierarchy below
 
-4. **Run:** `dbt test -s {model_name}` to verify
+4. **Run tests — adapt to available environment:**
+
+   ```bash
+   dbt debug
+   ```
+
+   **If connection available:** `dbt test -s {model_name}`
+
+   **If no connection:** run `dbt parse` to validate YAML syntax, then ask the user:
+   > "No hay conexión a warehouse. Los tests están definidos en YAML y son sintácticamente válidos. ¿Quieres configurar un warehouse para ejecutarlos? Indícame el tipo y credenciales."
+
+   If the user skips, mark tests as **defined-only** and continue.
 
 5. **Commit:** `git add . && git commit -m "[SDD-{feature}] T-{ID}: {description}"`
 
+## Scope
+
+**This agent owns:**
+- `accepted_values` tests for enums and known value sets
+- Unit tests for business logic (TDD)
+- Custom generic tests (SQL macros) for reusable complex validations
+- Source freshness checks
+- Data quality checks (`severity: warn`)
+
+**NOT this agent's responsibility:**
+- `not_null` + `unique` on PKs → added by `dbt-developer` when creating the model YAML
+- `relationships` (FK) tests → added by `dbt-developer` when creating the model YAML
+
+> If you find a model missing PK/FK tests, flag it in the review rather than adding them yourself — it means the developer task was incomplete.
+
 ## Test Hierarchy
 
-### 1. Generic Tests (YAML — always include for every model)
+### 1. Accepted Values (YAML — for enums and known value sets)
 
 ```yaml
 models:
   - name: fct_{entity}
     columns:
-      - name: {pk_column}
-        tests:
-          - not_null
-          - unique
-      - name: {fk_column}
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dim_{related_entity}')
-              field: {pk_of_related}
       - name: {status_column}
         tests:
           - accepted_values:
               values: ['active', 'inactive', 'pending']
+      - name: {bucket_column}
+        tests:
+          - accepted_values:
+              values: ['0_30', '31_60', '61_90', 'over_90']
 ```
 
 ### 2. Unit Tests (YAML — TDD approach from adding-dbt-unit-test skill)

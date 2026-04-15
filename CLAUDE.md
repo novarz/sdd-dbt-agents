@@ -47,14 +47,31 @@ This gives agents your actual table names, column types, lineage graph, and tran
 
 ## Workflow Phases
 
+### Phase 0: Environment Pre-flight (orchestrator)
+
+**Trigger:** Before launching any subagent, always run this check.
+
+1. Check if a dbt project exists:
+   ```bash
+   ls dbt_project.yml
+   ```
+2. **If no `dbt_project.yml`:** ask the user which warehouse they're targeting (BigQuery, Snowflake, Databricks, Redshift, DuckDB). Then create the scaffold: `dbt_project.yml`, `packages.yml`, `profiles.yml`, folder structure. Use **DuckDB as default** for local dev if the user has no preference.
+3. Check if `packages.yml` exists — if not, create it with `dbt-labs/dbt_utils` at minimum.
+4. Run `dbt deps` to install packages.
+5. Only proceed to Phase 1 once the project compiles with `dbt parse`.
+
+> This phase is skipped if `dbt_project.yml` already exists and `dbt parse` passes.
+
 ### Phase 1: Requirements (spec-analyst)
 
 **Trigger:** User describes a business need in natural language.
 
-1. Launch `spec-analyst` subagent with the user's request
-2. Subagent creates `specs/{feature_name}/requirements.md`
-3. Present requirements to user for approval
-4. **GATE: Do NOT proceed until user explicitly approves**
+1. Create `specs/{feature_name}/progress.md` to track phase completion
+2. Launch `spec-analyst` subagent with the user's request
+3. Subagent creates `specs/{feature_name}/requirements.md`
+4. Update `progress.md`: Phase 1 complete
+5. Present requirements to user for approval
+6. **GATE: Do NOT proceed until user explicitly approves**
 
 ### Phase 2: Technical Design (dbt-architect)
 
@@ -82,13 +99,16 @@ This gives agents your actual table names, column types, lineage graph, and tran
 1. Check `design.md` for Mesh architecture:
    - **If single-project:** proceed normally
    - **If monorepo Mesh:** ensure `projects/platform/` and `projects/{domain}/` folder structure exists before launching subagents; each dbt-developer subagent must be scoped to a specific project subfolder
-2. Group tasks by type:
-   - **Sources & Staging SQL** → launch `dbt-developer`
-   - **Tests (generic + unit)** → launch `dbt-tester`
+2. **Test ownership rule** (tell both agents explicitly in their prompts):
+   - `dbt-developer` owns: `not_null`, `unique` (PKs), `relationships` (FKs) — written in the model YAML at creation time
+   - `dbt-tester` owns: `accepted_values`, unit tests, custom data quality checks
+3. Group tasks by type:
+   - **Sources, models, seeds** → launch `dbt-developer`
+   - **`accepted_values`, unit tests, custom DQ tests** → launch `dbt-tester`
    - **Semantic Layer** (if spec requires metrics) → launch `dbt-semantic`
-3. Each subagent works on its tasks independently
-4. After each task: subagent commits with message referencing the task ID
-5. Report progress to user after each subagent completes
+4. Each subagent works on its tasks independently
+5. After each task: subagent commits with message referencing the task ID
+6. Update `progress.md` and report to user after each subagent completes
 
 ### Phase 5: Validation (dbt-reviewer)
 
