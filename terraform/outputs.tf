@@ -11,7 +11,27 @@ output "semantic_layer_token_uid" {
   value       = dbtcloud_service_token.semantic_layer.uid
 }
 
+output "semantic_layer_enabled" {
+  description = "Whether the Semantic Layer configuration has been applied"
+  value       = var.enable_semantic_layer
+}
+
 output "project_id" {
   description = "dbt Cloud project ID"
   value       = dbtcloud_project.this.id
+}
+
+output "production_environment_id" {
+  description = "dbt Cloud Production environment ID"
+  value       = dbtcloud_environment.production.environment_id
+}
+
+output "staging_environment_id" {
+  description = "dbt Cloud Staging environment ID"
+  value       = dbtcloud_environment.staging.environment_id
+}
+
+output "development_environment_id" {
+  description = "dbt Cloud Development environment ID"
+  value       = dbtcloud_environment.development.environment_id
 }
