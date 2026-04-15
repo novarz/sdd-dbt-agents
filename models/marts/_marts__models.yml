@@ -36,6 +36,10 @@ models:
           - type: not_null
         tests:
           - not_null
+          # Traceability: CA-01 / T-20 — accepted_values for region in dim_branch
+          - accepted_values:
+              arguments:
+                values: ['norte', 'sur', 'este', 'oeste', 'centro']
       - name: zone
         description: "Zona comercial de la sucursal"
         data_type: string
@@ -77,6 +81,10 @@ models:
           - type: not_null
         tests:
           - not_null
+          # Traceability: CA-01 / T-20 — accepted_values for segment in dim_customer
+          - accepted_values:
+              arguments:
+                values: ['retail', 'premium', 'private_banking', 'sme', 'corporate']
       - name: branch_id
         description: "FK a dim_branch. Puede ser NULL si el cliente no tiene sucursal asignada."
         data_type: string
@@ -86,6 +94,11 @@ models:
       - name: region
         description: "Region de la sucursal del cliente (desnormalizado)"
         data_type: string
+        tests:
+          # Traceability: CA-01 / T-20 — accepted_values for region in dim_customer (desnormalized)
+          - accepted_values:
+              arguments:
+                values: ['norte', 'sur', 'este', 'oeste', 'centro']
       - name: zone
         description: "Zona comercial de la sucursal del cliente (desnormalizado)"
         data_type: string
@@ -140,6 +153,10 @@ models:
           - type: not_null
         tests:
           - not_null
+          # Traceability: CA-01 / T-20 — accepted_values for product_type in dim_loan
+          - accepted_values:
+              arguments:
+                values: ['mortgage', 'consumer', 'business', 'credit_line']
       - name: product_name
         description: "Nombre comercial del producto (de stg_reference_data__product_catalog)"
         data_type: string
@@ -265,6 +282,10 @@ models:
           - type: not_null
         tests:
           - not_null
+          # Traceability: CA-02 / T-21 — accepted_values for delinquency_bucket in fct_loan_daily_snapshot
+          - accepted_values:
+              arguments:
+                values: ['current', '1_30', '31_60', '61_90', 'over_90']
       - name: ifrs9_stage
         description: "IFRS 9 stage: 1 (performing), 2 (underperforming), 3 (non-performing)"
         data_type: integer
@@ -272,6 +293,10 @@ models:
           - type: not_null
         tests:
           - not_null
+          # Traceability: CA-04 / T-21 — accepted_values for ifrs9_stage in fct_loan_daily_snapshot
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
       - name: provision_rate
         description: "Tasa de provision IFRS 9 aplicada"
         data_type: numeric
@@ -298,6 +323,24 @@ models:
   # fct_loan_payment
   # ---------------------------------------------------------------------------
   - name: fct_loan_payment
+    # Traceability: CA-05 / T-22 — row count audit checks on DQ models (severity: warn)
+    # dq_row_count_below_threshold verifies orphan anomaly tables do not exceed
+    # the acceptable threshold. Configured as warn so pipeline is never blocked.
+    tests:
+      - dq_row_count_below_threshold:
+          arguments:
+            dq_model: ref('int_dq__orphan_payments')
+            threshold: 1000
+          config:
+            severity: warn
+          name: warn_orphan_payments_below_threshold
+      - dq_row_count_below_threshold:
+          arguments:
+            dq_model: ref('int_dq__orphan_loans')
+            threshold: 1000
+          config:
+            severity: warn
+          name: warn_orphan_loans_below_threshold
     description: >
       Historial de pagos de prestamos, excluyendo pagos huerfanos.
       Grain: un registro por payment_id.
