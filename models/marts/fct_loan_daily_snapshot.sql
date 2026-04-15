@@ -65,8 +65,9 @@ snapshot_base as (
         on p.customer_id = dc.customer_id
 
     {% if is_incremental() %}
-    -- In incremental mode, only process today's snapshot
-    -- (The delete+insert strategy removes today's rows and re-inserts them)
+    -- In incremental mode, only process loans whose snapshot_date equals today.
+    -- The delete+insert strategy removes today's existing rows before re-inserting.
+    where cast(current_date as date) >= (select max(snapshot_date) from {{ this }})
     {% endif %}
 
 ),
