@@ -1,0 +1,110 @@
+version: 2
+
+# Traceability: CA-04 / T-25
+# Validates that int_loan__provisions correctly calculates provision_amount as
+# outstanding_balance * provision_rate. The provision rates come from the seed
+# ifrs9_provision_rates — they are NOT hardcoded (CA-04 requirement).
+# Also verifies that the JOIN to the seed is correct for each bucket.
+
+unit_tests:
+  - name: test_provision_calculation
+    description: >
+      Validates that int_loan__provisions computes provision_amount = outstanding_balance
+      * provision_rate for each delinquency bucket. Uses the seed ifrs9_provision_rates
+      as the source of truth for provision rates.
+      Key scenario from T-25 spec: outstanding_balance = 100000, provision_rate = 0.05
+      (31_60 bucket) → provision_amount = 5000.
+      Traceability: CA-04 from requirements.md
+    model: int_loan__provisions
+
+    given:
+      - input: ref('int_loan__delinquency_bands')
+        rows:
+          # Scenario from T-25 spec: 31_60 bucket, provision_rate = 0.10 (seed value)
+          # Note: tasks.md says provision_rate = 0.05 as an example; actual seed has 0.10 for 31_60.
+          # Using the seed values as the authoritative source per CA-04.
+          - loan_id: "L001"
+            customer_id: "C001"
+            product_type: "consumer"
+            outstanding_balance: 100000.00
+            loan_status: "active"
+            max_days_past_due: 45
+            delinquency_bucket: "31_60"
+            ifrs9_stage: 2
+          # current bucket — provision_rate = 0.01 → provision_amount = 500
+          - loan_id: "L002"
+            customer_id: "C002"
+            product_type: "mortgage"
+            outstanding_balance: 50000.00
+            loan_status: "active"
+            max_days_past_due: 0
+            delinquency_bucket: "current"
+            ifrs9_stage: 1
+          # 1_30 bucket — provision_rate = 0.03 → provision_amount = 3000
+          - loan_id: "L003"
+            customer_id: "C003"
+            product_type: "business"
+            outstanding_balance: 100000.00
+            loan_status: "active"
+            max_days_past_due: 15
+            delinquency_bucket: "1_30"
+            ifrs9_stage: 1
+          # 61_90 bucket — provision_rate = 0.25 → provision_amount = 25000
+          - loan_id: "L004"
+            customer_id: "C004"
+            product_type: "consumer"
+            outstanding_balance: 100000.00
+            loan_status: "active"
+            max_days_past_due: 75
+            delinquency_bucket: "61_90"
+            ifrs9_stage: 2
+          # over_90 bucket — provision_rate = 1.00 → provision_amount = 100000
+          - loan_id: "L005"
+            customer_id: "C005"
+            product_type: "credit_line"
+            outstanding_balance: 100000.00
+            loan_status: "restructured"
+            max_days_past_due: 120
+            delinquency_bucket: "over_90"
+            ifrs9_stage: 3
+
+      - input: ref('ifrs9_provision_rates')
+        rows:
+          - delinquency_bucket: "current"
+            ifrs9_stage: 1
+            provision_rate: 0.01
+          - delinquency_bucket: "1_30"
+            ifrs9_stage: 1
+            provision_rate: 0.03
+          - delinquency_bucket: "31_60"
+            ifrs9_stage: 2
+            provision_rate: 0.10
+          - delinquency_bucket: "61_90"
+            ifrs9_stage: 2
+            provision_rate: 0.25
+          - delinquency_bucket: "over_90"
+            ifrs9_stage: 3
+            provision_rate: 1.00
+
+    expect:
+      rows:
+        - loan_id: "L001"
+          delinquency_bucket: "31_60"
+          provision_rate: 0.10
+          provision_amount: 10000.00
+        - loan_id: "L002"
+          delinquency_bucket: "current"
+          provision_rate: 0.01
+          provision_amount: 500.00
+        - loan_id: "L003"
+          delinquency_bucket: "1_30"
+          provision_rate: 0.03
+          provision_amount: 3000.00
+        - loan_id: "L004"
+          delinquency_bucket: "61_90"
+          provision_rate: 0.25
+          provision_amount: 25000.00
+        - loan_id: "L005"
+          delinquency_bucket: "over_90"
+          provision_rate: 1.00
+          provision_amount: 100000.00
