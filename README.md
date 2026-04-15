@@ -7,7 +7,7 @@ Un framework de agentes IA coordinados que construye proyectos dbt completos a p
 El orquestador (`CLAUDE.md`) dirige un equipo de 7 subagentes especializados a través de un flujo con approval gates humanos en cada fase:
 
 ```
-Requisito → Spec → Diseño técnico → Tareas → Implementación paralela → Validación
+Requisito → Spec → Diseño técnico → Tareas → Implementación paralela → Validación → Deploy dbt Cloud
 ```
 
 Cada fase produce artefactos trazables: el `requirements.md` traza a las preguntas de negocio, que trazan a los modelos, que trazan a los tests. Si el regulador pregunta "¿de dónde sale este dato?", la respuesta está en el spec.
@@ -88,6 +88,19 @@ dbt --version
 node --version
 ```
 
+**Para Phase 6 (deploy a dbt Cloud):**
+
+```bash
+# Terraform CLI
+terraform --version  # si falta: brew install terraform
+
+# GitHub CLI (autenticado)
+gh --version         # si falta: brew install gh
+gh auth login
+```
+
+> **macOS:** Si no tienes Homebrew → https://brew.sh
+
 ### 2. Instalar dbt Agent Skills (en Claude Code)
 
 ```bash
@@ -160,6 +173,7 @@ mkdir -p /path/to/tu-proyecto-dbt/specs/
 ```
 tu-proyecto-dbt/
 ├── CLAUDE.md                          ← Orquestador SDD
+├── .env.example                       ← Plantilla de credenciales (nunca commitear .env)
 ├── .claude/
 │   └── agents/
 │       ├── spec-analyst.md            ← Fase 1: Requisitos
@@ -174,7 +188,14 @@ tu-proyecto-dbt/
 │       ├── requirements.md
 │       ├── design.md
 │       ├── tasks.md
-│       └── review.md
+│       ├── review.md
+│       └── progress.md
+├── terraform/                         ← Fase 6: Infraestructura dbt Cloud
+│   ├── main.tf                        ← Recursos: proyecto, conexión, entornos, jobs, SL
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── providers.tf
+│   └── terraform.tfvars               ← Valores no sensibles (gitignoreado)
 ├── models/
 │   ├── staging/
 │   ├── intermediate/
@@ -267,6 +288,30 @@ Mostrar el review report con:
 > 5. **Deployment incluido** — Entornos, CI/CD, RBAC no son un afterthought
 >
 > "Esto es dbt Platform + AI agents para un equipo de datos bancario."
+
+### Acto 6b (bonus): Deploy a dbt Cloud con Terraform (3 min)
+
+Si se quiere mostrar el aprovisionamiento completo:
+
+```bash
+cp .env.example .env   # rellenar con credenciales dbt Cloud + Snowflake
+source .env
+cd terraform && terraform apply
+```
+
+El agente `dbt-infra` provisiona automáticamente via Terraform:
+- Proyecto dbt Cloud + conexión Snowflake
+- Entornos Development / Staging / Production (con branch custom)
+- Job diario (`dbt build`) + Slim CI (PR webhook)
+- Semantic Layer configuration + service token
+- `.mcp.json` con la configuración del dbt MCP Server
+
+**Activación del Semantic Layer** (requiere un run exitoso previo):
+```bash
+terraform apply -var="enable_semantic_layer=true"
+```
+
+> El GitHub App installation ID se auto-descubre via `gh api orgs/{org}/installations` — no hace falta buscarlo manualmente.
 
 ### Acto 7 (bonus): Consulta en vivo (3 min)
 
