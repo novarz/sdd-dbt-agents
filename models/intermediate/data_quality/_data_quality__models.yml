@@ -1,0 +1,72 @@
+version: 2
+
+models:
+  - name: int_dq__orphan_payments
+    description: >
+      Audit model. Grain: one row per payment_id that cannot be matched to a loan.
+      Captures payments with no corresponding loan in stg_core_banking__loans.
+      These anomalies are logged for investigation by the data engineering team.
+      Orphan payments are excluded from all metric calculations (CA-05).
+      Access: private — for data engineering use only.
+    config:
+      materialized: table
+      access: private
+      group: risk_data_engineering
+    columns:
+      - name: payment_id
+        description: "ID del pago huerfano"
+        tests:
+          - not_null
+          - unique
+      - name: orphan_loan_id
+        description: "loan_id del pago que no tiene prestamo correspondiente en el sistema"
+      - name: due_date
+        description: "Fecha prevista de pago del registro huerfano"
+      - name: payment_date
+        description: "Fecha real de pago (puede ser NULL)"
+      - name: amount_due
+        description: "Importe previsto en EUR"
+      - name: amount_paid
+        description: "Importe pagado en EUR"
+      - name: days_past_due
+        description: "Dias de retraso del pago huerfano"
+      - name: payment_status
+        description: "Estado del pago huerfano"
+      - name: loaded_at
+        description: "Timestamp original de carga del registro desde la fuente"
+      - name: detected_at
+        description: "Timestamp en que se detecto la anomalia por este modelo"
+
+  - name: int_dq__orphan_loans
+    description: >
+      Audit model. Grain: one row per loan_id that cannot be matched to a customer.
+      Captures loans with no corresponding customer in stg_core_banking__customers.
+      Note: stg_core_banking__customers only includes active customers.
+      A loan may appear here if its customer is inactive or missing from the source.
+      These anomalies are logged for investigation by the data engineering team.
+      Orphan loans are excluded from all metric calculations (CA-05).
+      Access: private — for data engineering use only.
+    config:
+      materialized: table
+      access: private
+      group: risk_data_engineering
+    columns:
+      - name: loan_id
+        description: "ID del prestamo huerfano"
+        tests:
+          - not_null
+          - unique
+      - name: orphan_customer_id
+        description: "customer_id del prestamo que no tiene cliente correspondiente activo"
+      - name: product_type
+        description: "Tipo de producto del prestamo huerfano"
+      - name: origination_date
+        description: "Fecha de apertura del prestamo huerfano"
+      - name: outstanding_balance
+        description: "Saldo vivo del prestamo huerfano en EUR"
+      - name: loan_status
+        description: "Estado del prestamo huerfano"
+      - name: loaded_at
+        description: "Timestamp original de carga del registro desde la fuente"
+      - name: detected_at
+        description: "Timestamp en que se detecto la anomalia por este modelo"
