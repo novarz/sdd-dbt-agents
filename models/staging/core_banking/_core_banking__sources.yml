@@ -1,0 +1,104 @@
+version: 2
+
+sources:
+  - name: core_banking
+    description: "Datos transaccionales de Core Banking (Temenos Transact / Fusion)"
+    database: "{{ env_var('DBT_SOURCE_DATABASE', target.database) }}"
+    schema: core_banking
+    config:
+      loaded_at_field: loaded_at
+      freshness:
+        warn_after:
+          count: 12
+          period: hour
+        error_after:
+          count: 24
+          period: hour
+    tables:
+      - name: loans
+        description: "Tabla maestra de prestamos. Grain: un registro por loan_id. ~2M filas."
+        identifier: loans
+        columns:
+          - name: loan_id
+            description: "PK del prestamo"
+            tests:
+              - not_null
+              - unique
+          - name: customer_id
+            description: "FK a customers"
+          - name: account_id
+            description: "FK a accounts"
+          - name: product_type
+            description: "Tipo de producto: mortgage, consumer, business, credit_line"
+          - name: origination_date
+            description: "Fecha de apertura del prestamo"
+          - name: maturity_date
+            description: "Fecha de vencimiento del prestamo"
+          - name: original_amount
+            description: "Importe original en EUR"
+          - name: outstanding_balance
+            description: "Saldo vivo actual en EUR"
+          - name: interest_rate
+            description: "Tipo de interes anual"
+          - name: collateral_value
+            description: "Valor de la garantia (hipotecas)"
+          - name: loan_status
+            description: "Estado del prestamo: active, closed, defaulted, restructured"
+          - name: risk_rating
+            description: "Calificacion interna de riesgo"
+          - name: loaded_at
+            description: "Timestamp de carga del registro"
+
+      - name: loan_payments
+        description: "Historial de pagos de prestamos. Grain: un registro por payment_id. ~15M filas/ano."
+        identifier: loan_payments
+        columns:
+          - name: payment_id
+            description: "PK del pago"
+            tests:
+              - not_null
+              - unique
+          - name: loan_id
+            description: "FK a loans"
+          - name: due_date
+            description: "Fecha prevista de pago"
+          - name: payment_date
+            description: "Fecha real de pago (NULL si impagado)"
+          - name: amount_due
+            description: "Importe previsto en EUR"
+          - name: amount_paid
+            description: "Importe real pagado en EUR"
+          - name: principal_component
+            description: "Componente de principal del pago"
+          - name: interest_component
+            description: "Componente de intereses del pago"
+          - name: days_past_due
+            description: "Dias de retraso (0 si al corriente)"
+          - name: payment_status
+            description: "Estado del pago: paid, partial, unpaid, written_off"
+          - name: loaded_at
+            description: "Timestamp de carga del registro"
+
+      - name: customers
+        description: "Tabla maestra de clientes. Grain: un registro por customer_id. ~800K filas."
+        identifier: customers
+        columns:
+          - name: customer_id
+            description: "PK del cliente"
+            tests:
+              - not_null
+              - unique
+          - name: customer_type
+            description: "Tipo de cliente: individual, business"
+          - name: segment
+            description: "Segmento: retail, premium, private_banking, sme, corporate"
+          - name: branch_id
+            description: "FK a branches"
+          - name: country
+            description: "Pais del cliente"
+          - name: registration_date
+            description: "Fecha de registro del cliente"
+          - name: is_active
+            description: "Indica si el cliente esta activo"
+          - name: loaded_at
+            description: "Timestamp de carga del registro"

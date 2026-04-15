@@ -1,0 +1,6 @@
+delinquency_bucket,ifrs9_stage,provision_rate
+current,1,0.01
+1_30,1,0.03
+31_60,2,0.10
+61_90,2,0.25
+over_90,3,1.00
