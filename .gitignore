@@ -1,0 +1,19 @@
+# dbt
+target/
+dbt_packages/
+logs/
+profiles.yml
+
+# MCP credentials
+.mcp.json
+
+# Claude Code
+.claude/memory/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store

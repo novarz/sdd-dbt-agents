@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "dbt": {
+      "command": "uvx",
+      "args": ["dbt-mcp"],
+      "env": {
+        "DBT_HOST": "https://YOUR_SUBDOMAIN.us1.dbt.com",
+        "DBT_TOKEN": "dbtc_YOUR_SERVICE_TOKEN",
+        "DBT_PROD_ENVIRONMENT_ID": "YOUR_ENVIRONMENT_ID"
+      }
+    }
+  }
+}
