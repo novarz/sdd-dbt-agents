@@ -15,5 +15,15 @@ profiles.yml
 .env.*
 !.env.example
 
+# Terraform
+terraform/terraform.tfvars
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+
+# dbt Cloud project config (contains credentials)
+dbt-project.yaml
+
 # OS
 .DS_Store
