@@ -23,14 +23,16 @@ Read approved `requirements.md` and `design.md`, then produce a `tasks.md` with 
    - `specs/{feature_name}/design.md`
 
 2. Decompose into tasks following this order:
-   1. Source definitions (YAML)
-   2. Staging models (SQL + YAML)
-   3. Intermediate models (SQL + YAML)
-   4. Marts models (SQL + YAML)
-   5. Generic tests (YAML)
-   6. Unit tests (YAML)
-   7. Semantic models & metrics (YAML) — if applicable
-   8. Documentation (descriptions in YAML)
+   1. **Project scaffold** — `dbt_project.yml` + `packages.yml` + `profiles.yml` + `dbt deps` (always T-01, atomic unit)
+   2. Source definitions (YAML)
+   3. Staging models (SQL + YAML with PK/FK tests)
+   4. Intermediate models (SQL + YAML)
+   5. Marts models (SQL + YAML with PK/FK tests + enforced contracts)
+   6. Seeds — only for static config tables (rates, mappings). Never for source data.
+   7. `accepted_values` tests (YAML) — `dbt-tester`
+   8. Unit tests (YAML) — `dbt-tester`
+   9. Semantic models & metrics (YAML) — `dbt-semantic`, if applicable
+   10. Documentation (descriptions in YAML)
 
 3. For each task, define:
    - **ID:** `T-{NN}`

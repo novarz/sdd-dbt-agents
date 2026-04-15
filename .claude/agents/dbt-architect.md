@@ -228,6 +228,8 @@ packages:
 4. **Testability:** Every acceptance criterion maps to at least one dbt test
 5. **Incremental by default:** Any table > 1M rows should be incremental
 6. **Source freshness:** All sources must have freshness checks
+7. **Platform-agnostic by default:** Use ANSI SQL and `delete+insert` incremental strategy. Document warehouse-specific overrides explicitly.
+8. **Seeds are for config, not data:** Seeds are for small, static reference tables managed by the analytics team (e.g. IFRS 9 rates, product mappings). Source data always comes from `{{ source() }}` — never recreate business data as seeds.
 
 ## Quality Checklist
 
@@ -237,6 +239,10 @@ packages:
 - [ ] Source definitions include freshness checks
 - [ ] Naming follows dbt Labs conventions (stg_, int_, fct_, dim_)
 - [ ] Mermaid DAG is valid and readable
+- [ ] `packages.yml` listed as a required file if any dbt_utils macros are used (e.g. `unique_combination_of_columns`, `date_spine`)
+- [ ] Incremental models have an explicit `is_incremental()` filter defined — not left empty
+- [ ] Every Semantic Layer metric can be sliced by the dimensions needed to answer its BQs
+- [ ] Platform from `requirements.md` section 6 is reflected in warehouse-specific override blocks
 - [ ] Mesh assessment completed and decision documented (single-project vs monorepo)
 - [ ] If Mesh: public models are listed with contracts enforced
 - [ ] If Mesh: access levels are set (private / protected / public) for every model layer

@@ -66,22 +66,44 @@ Follow the existing style of the project (medallion, stage/intermediate/mart, et
 YAML must include:
 - `description` for every model and every column in marts
 - `data_type` and `constraints` for contracted models
-- `tests` for PKs (not_null + unique) and FKs (relationships)
+- `tests` for PKs (`not_null` + `unique`) and FKs (`relationships`) — **these are part of the model definition, not a separate testing task**
 
-### Step 4: BUILD — compile is NOT enough
+> Generic tests for business-logic enums (`accepted_values`), custom data quality checks, and unit tests are the responsibility of the `dbt-tester` agent.
 
+### Step 4: BUILD — adapt to available environment
+
+First, check whether a warehouse connection is available:
+
+```bash
+dbt debug
+```
+
+**If connection is available** (`dbt debug` passes):
 ```bash
 dbt build -s {model_name}
 ```
-
 If build fails 3 times, **STOP** and report the error with the exact message.
 
-### Step 5: VERIFY — check output with dbt show
+**If no connection is available** (`dbt debug` fails or no `profiles.yml` found):
+1. Run `dbt parse` to validate YAML and Jinja syntax:
+   ```bash
+   dbt parse
+   ```
+2. Run `dbt compile -s {model_name}` to verify the SQL compiles correctly:
+   ```bash
+   dbt compile -s {model_name}
+   ```
+3. Ask the user:
+   > "No hay conexión a warehouse configurada. He validado los modelos con `dbt parse` y `dbt compile`. ¿Quieres conectarte a un warehouse para ejecutar `dbt build`? Si es así, indícame el tipo (BigQuery, Snowflake, Databricks, DuckDB, Redshift) y las credenciales necesarias."
+4. If the user provides credentials, help configure `profiles.yml` and re-run `dbt build`.
+5. If the user prefers to skip, mark the task as **compiled-only** and continue.
 
+### Step 5: VERIFY
+
+**If warehouse available:**
 ```bash
 dbt show -s {model_name} --limit 10
 
-# Profile output
 dbt show --inline "
   select count(*) as total_rows,
     count(distinct {pk}) as unique_pks,
@@ -90,7 +112,7 @@ dbt show --inline "
 "
 ```
 
-Verify row count, NULL distribution, PK uniqueness, date ranges.
+**If compiled-only:** open `target/compiled/{project}/{model_name}.sql` and review the compiled SQL for correctness — check joins, column references, and business logic visually.
 
 ### Step 6: COMMIT
 
