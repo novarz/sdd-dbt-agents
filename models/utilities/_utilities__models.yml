@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: metricflow_time_spine
+    description: "Time spine requerido por MetricFlow para operaciones de dimension temporal en el Semantic Layer. Cubre desde 2022-01-01 (inicio de datos Temenos) hasta la fecha actual con granularidad de dia."
+    config:
+      materialized: table
+    columns:
+      - name: date_day
+        description: "Fecha en granularidad de dia. Columna principal del time spine."
+        granularity: day

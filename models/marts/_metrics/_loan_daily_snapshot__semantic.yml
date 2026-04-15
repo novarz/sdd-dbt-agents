@@ -1,0 +1,76 @@
+version: 2
+
+semantic_models:
+  - name: loan_daily_snapshot
+    description: "Foto diaria del estado de la cartera de prestamos. Grain: un registro por loan_id por snapshot_date. Base para metricas de morosidad, NPL, exposicion y provisiones."
+    model: ref('fct_loan_daily_snapshot')
+    defaults:
+      agg_time_dimension: snapshot_date
+
+    entities:
+      - name: snapshot
+        description: "Entidad primaria del snapshot diario: combinacion unica de loan_id y snapshot_date."
+        type: primary
+        expr: "loan_id || '-' || cast(snapshot_date as varchar)"
+      - name: loan
+        description: "Referencia al prestamo individual. FK a dim_loan."
+        type: foreign
+        expr: loan_id
+      - name: customer
+        description: "Referencia al cliente propietario del prestamo. FK a dim_customer."
+        type: foreign
+        expr: customer_id
+
+    dimensions:
+      - name: snapshot_date
+        description: "Fecha del snapshot diario. Dimension temporal principal para series temporales."
+        type: time
+        expr: snapshot_date
+        type_params:
+          time_granularity: day
+      - name: product_type
+        description: "Tipo de producto crediticio: mortgage, consumer, business, credit_line."
+        type: categorical
+        expr: product_type
+      - name: segment
+        description: "Segmento del cliente: retail, premium, private_banking, sme, corporate."
+        type: categorical
+        expr: segment
+      - name: delinquency_bucket
+        description: "Bucket de morosidad del prestamo: current, 1_30, 31_60, 61_90, over_90."
+        type: categorical
+        expr: delinquency_bucket
+      - name: ifrs9_stage
+        description: "Stage IFRS 9 del prestamo: 1 (performing), 2 (underperforming), 3 (non-performing)."
+        type: categorical
+        expr: "cast(ifrs9_stage as varchar)"
+      - name: branch_id
+        description: "Identificador de la sucursal asociada al cliente del prestamo."
+        type: categorical
+        expr: branch_id
+      - name: is_npl
+        description: "Indicador de prestamo non-performing (delinquency_bucket = 'over_90')."
+        type: categorical
+        expr: "cast(is_npl as varchar)"
+
+    measures:
+      - name: total_outstanding_balance
+        description: "Saldo vivo total de la cartera en EUR en la fecha del snapshot."
+        agg: sum
+        expr: outstanding_balance
+      - name: npl_balance
+        description: "Saldo vivo de prestamos non-performing (>90 dias de mora) en EUR."
+        agg: sum
+        expr: "case when is_npl then outstanding_balance else 0 end"
+      - name: total_provision_amount
+        description: "Provisiones IFRS 9 totales calculadas en EUR (outstanding_balance * provision_rate)."
+        agg: sum
+        expr: provision_amount
+      - name: loan_count
+        description: "Numero de prestamos distintos en la cartera."
+        agg: count_distinct
+        expr: loan_id
+      - name: npl_loan_count
+        description: "Numero de prestamos distintos clasificados como non-performing (>90 dias)."
+        agg: count_distinct
+        expr: "case when is_npl then loan_id end"
