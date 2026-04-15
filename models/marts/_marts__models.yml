@@ -212,6 +212,15 @@ models:
       Incluye clasificacion de morosidad, stage IFRS 9, provision calculada e indicador NPL.
       Modelo incremental (delete+insert) por unique_key [loan_id, snapshot_date].
       Implementa CA-01 (NPL), CA-02 (buckets), CA-03 (snapshot diario), CA-04 (provisiones).
+    # Traceability: CA-01, CA-02 — grain: one row per loan per day
+    # CRITICAL-02 fix: composite PK uniqueness test (unique_key config controls merge behavior only,
+    # not data integrity — this test validates the materialized table has no duplicate combinations).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - loan_id
+              - snapshot_date
     config:
       contract:
         enforced: true
