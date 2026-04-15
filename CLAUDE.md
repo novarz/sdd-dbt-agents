@@ -66,9 +66,14 @@ This gives agents your actual table names, column types, lineage graph, and tran
 
 **Trigger:** User describes a business need in natural language.
 
+Before launching the subagent, ask the user these source availability questions and include the answers in the prompt to the subagent:
+
+> 1. ¿Las tablas fuente ya existen en el warehouse? ¿En qué `database.schema`?
+> 2. Si no existen, ¿usamos datos reales (carga externa), seeds dbt, o scripts SQL de demo?
+
 1. Create `specs/{feature_name}/progress.md` to track phase completion
-2. Launch `spec-analyst` subagent with the user's request
-3. Subagent creates `specs/{feature_name}/requirements.md`
+2. Launch `spec-analyst` subagent with the user's request **and source availability answers**
+3. Subagent creates `specs/{feature_name}/requirements.md` — must include a **Source Availability** section with: database, schema, table names, and data strategy (real / seeds / demo scripts)
 4. Update `progress.md`: Phase 1 complete
 5. Present requirements to user for approval
 6. **GATE: Do NOT proceed until user explicitly approves**
@@ -80,8 +85,9 @@ This gives agents your actual table names, column types, lineage graph, and tran
 1. Launch `dbt-architect` subagent with path to approved `requirements.md`
 2. Subagent creates `specs/{feature_name}/design.md`
 3. Subagent performs dbt Mesh assessment — the design will explicitly state whether a single-project or monorepo multi-project layout is recommended
-4. Present design (DAG, materializations, contracts, project structure) to user
-5. **GATE: Do NOT proceed until user explicitly approves — including the Mesh decision if one was made**
+4. Design must include a **Source Contracts** section specifying exact `database.schema.table` for each source, and how missing sources will be handled (seeds, demo scripts, or external load)
+5. Present design (DAG, materializations, contracts, project structure) to user
+6. **GATE: Do NOT proceed until user explicitly approves — including the Mesh decision if one was made**
 
 ### Phase 3: Task Decomposition (dbt-planner)
 
@@ -124,14 +130,36 @@ This gives agents your actual table names, column types, lineage graph, and tran
 
 **Trigger:** User approves the review AND wants to deploy to dbt Cloud.
 
+**Prerequisites — verify before launching the subagent:**
+
+Run this preflight check and show the user the results:
+```bash
+echo "terraform: $(terraform version 2>/dev/null | head -1 || echo 'NOT FOUND')"
+echo "gh:        $(gh --version 2>/dev/null | head -1 || echo 'NOT FOUND')"
+echo "gh auth:   $(gh auth status 2>&1 | head -1)"
+echo ".env:      $([ -f .env ] && echo 'found' || echo 'NOT FOUND — cp .env.example .env and fill credentials')"
+```
+
+If `terraform` or `gh` are missing, suggest installing them. If [Homebrew](https://brew.sh) is available (`brew --version`), offer the one-liner:
+```bash
+brew install terraform gh
+```
+Otherwise suggest the official download pages: [terraform.io](https://developer.hashicorp.com/terraform/install) and [cli.github.com](https://cli.github.com).
+
+If any prerequisite is missing, wait for the user to resolve it before proceeding.
+
 Ask the user explicitly:
 > "El review está aprobado. ¿Quieres provisionar el proyecto en dbt Cloud ahora? Necesitaré las credenciales de dbt Cloud y del warehouse."
 
 If yes:
-1. Launch `dbt-infra` subagent with path to `specs/{feature_name}/requirements.md`
-2. Subagent provisions: dbt Cloud project, connection, environments (dev/staging/prod), Slim CI job, daily build jobs, Semantic Layer, and `.mcp.json`
-3. Update `progress.md`: Phase 6 complete — include dbt Cloud project URL
-4. **GATE: Do NOT proceed until user confirms infrastructure is up**
+1. Run the preflight check above
+2. Ask the user to run `source .env` in their terminal — credentials must be exported as env vars, **never shared in chat**
+3. Launch `dbt-infra` subagent with `mode: "bypassPermissions"` and path to `specs/{feature_name}/requirements.md` — bypass is required so the subagent can write files and run Terraform without repeated permission prompts
+4. Subagent provisions: dbt Cloud project, connection, environments (dev/staging/prod), Slim CI job, daily build jobs, Semantic Layer, and `.mcp.json`
+5. Before triggering the first production job run, verify source tables exist in Snowflake. If not, resolve according to the data strategy defined in `requirements.md` (load seeds, run demo scripts, or ask user to confirm external load)
+6. After first successful job run: re-run `terraform apply -var="enable_semantic_layer=true"` to activate Semantic Layer
+7. Update `progress.md`: Phase 6 complete — include dbt Cloud project URL
+8. **GATE: Do NOT proceed until user confirms infrastructure is up**
 
 If no: mark Phase 6 as skipped in `progress.md` and close the workflow.
 

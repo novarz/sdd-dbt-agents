@@ -31,6 +31,12 @@ variable "dbt_version" {
 
 # ─── Git repository ───────────────────────────────────────────────────────────
 
+variable "git_branch" {
+  description = "Git branch to use for all environments"
+  type        = string
+  default     = "demo/loan-portfolio-risk"
+}
+
 variable "git_remote_url" {
   description = "SSH URL of the git repository (e.g. git@github.com:org/repo.git)"
   type        = string
@@ -43,7 +49,7 @@ variable "git_clone_strategy" {
 }
 
 variable "github_installation_id" {
-  description = "GitHub App installation ID (required if git_clone_strategy = github_app)"
+  description = "GitHub App installation ID. If null, auto-discovered via GITHUB_TOKEN + GITHUB_ORG env vars."
   type        = number
   default     = null
 }
@@ -105,6 +111,14 @@ variable "schema_production" {
   description = "Snowflake schema suffix for the Production environment"
   type        = string
   default     = "prod"
+}
+
+# ─── Semantic Layer ───────────────────────────────────────────────────────────
+
+variable "enable_semantic_layer" {
+  description = "Set to true only after a successful production job run exists"
+  type        = bool
+  default     = false
 }
 
 # ─── Jobs ─────────────────────────────────────────────────────────────────────
