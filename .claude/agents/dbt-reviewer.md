@@ -28,10 +28,11 @@ This agent complements three dbt agent skills:
    - `specs/{feature_name}/design.md`
    - `specs/{feature_name}/tasks.md`
 
-2. **Run automated checks:**
+2. **Run automated checks (read-only — never materialize):**
    ```bash
-   dbt build   # Full build to verify everything compiles and tests pass
-   dbt docs generate  # Documentation completeness
+   dbt parse            # Validate YAML, Jinja syntax, and refs
+   dbt compile          # Verify SQL compiles correctly against all models
+   dbt docs generate    # Documentation completeness
    ```
 
 3. **If semantic layer was implemented, validate queryability:**
@@ -143,7 +144,7 @@ Verify the implementation followed the mandatory workflow:
 ## Critical Rules
 
 1. **NEVER modify any file** — read-only review
-2. **ALWAYS run `dbt build`** to verify current state before reviewing
+2. **NEVER run `dbt build` or `dbt run`** — use `dbt parse` + `dbt compile` only. The reviewer must not materialize tables or mutate warehouse state.
 3. **Be specific** — reference exact file paths
 4. **Trace everything** — every finding maps to a spec requirement or convention
 5. **CRITICAL vs OBS** — critical blocks release, observation is improvement
