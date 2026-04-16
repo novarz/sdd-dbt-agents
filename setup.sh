@@ -97,6 +97,22 @@ if [ -f project-config.yaml ]; then
   echo ""
 fi
 
+# ─── Optional: CI validation ─────────────────────────────────────────────────
+if [ ! -f .github/workflows/validate.yml ] && [ -f ci/validate.yml ]; then
+  echo "Optional: GitHub Actions CI validates Terraform syntax, agent consistency,"
+  echo "and checks for leaked credentials on every PR."
+  read -p "Activate CI validation? (y/N) " -n 1 -r
+  echo ""
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    mkdir -p .github/workflows
+    cp ci/validate.yml .github/workflows/validate.yml
+    echo "CI activated: .github/workflows/validate.yml"
+  else
+    echo "Skipped. To activate later: cp ci/validate.yml .github/workflows/"
+  fi
+  echo ""
+fi
+
 # ─── Initialize Terraform ────────────────────────────────────────────────────
 if command -v terraform &>/dev/null; then
   echo "To initialize Terraform after filling project-config.yaml:"
