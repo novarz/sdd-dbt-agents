@@ -79,14 +79,22 @@ echo "  /plugin marketplace add dbt-labs/dbt-agent-skills"
 echo "  /plugin install dbt@dbt-agent-marketplace"
 echo ""
 
-# ─── Generate profiles.yml ────────────────────────────────────────────────────
+# ─── Optional: Generate profiles.yml ──────────────────────────────────────────
+# Only needed for local execution (dbt Fusion or dbt Core).
+# Not needed if using dbt Cloud CLI or only deploying via Phase 6 (Terraform).
 if [ -f project-config.yaml ] && [ ! -f profiles.yml ]; then
-  echo "Generating profiles.yml from project-config.yaml..."
-  ./scripts/generate-profiles.sh project-config.yaml || echo "  Failed — you can generate it later with: ./scripts/generate-profiles.sh"
+  echo "profiles.yml is only needed for local dbt execution (Fusion or Core)."
+  echo "Not needed if using dbt Cloud CLI or only deploying via Terraform."
+  read -p "Generate profiles.yml for local development? (y/N) " -n 1 -r
+  echo ""
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    ./scripts/generate-profiles.sh project-config.yaml || echo "  Failed — you can generate it later with: ./scripts/generate-profiles.sh"
+  else
+    echo "Skipped. To generate later: ./scripts/generate-profiles.sh"
+  fi
   echo ""
 elif [ -f profiles.yml ]; then
-  echo "profiles.yml already exists, skipping generation."
-  echo "  To regenerate: rm profiles.yml && ./scripts/generate-profiles.sh"
+  echo "profiles.yml exists (local development enabled)."
   echo ""
 fi
 
