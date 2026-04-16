@@ -214,6 +214,30 @@ When the user wants to add new user stories or capabilities to an existing featu
 
 The orchestrator decides which path based on whether the new scope would modify existing models or only add new ones.
 
+### D) Multiple features in parallel
+
+Multiple features can be developed simultaneously. dbt Platform isolates environments naturally:
+- **Dev**: each developer has their own schema (`dbt_dev_{user}`) — no warehouse collision
+- **CI**: Slim CI runs per PR, isolated — no collision
+- **Prod**: merges are sequential — if Feature A changes a model that Feature B depends on, B's CI fails after A merges (desired behavior)
+
+**Convention: one branch per feature, never two features on the same branch.**
+
+```
+main
+├── feature/customer-ltv        ← SDD workflow running independently
+├── feature/payment-reconcile   ← SDD workflow running independently
+```
+
+Each feature runs the full SDD workflow in its own branch and conversation. The orchestrator must NOT run two features on the same branch.
+
+**When features collide (git merge conflicts):**
+- Two features modify the same SQL file → standard git conflict at merge time
+- Two features add the same metric/column name in different files → `dbt compile` catches it in Slim CI
+- Resolution: the second PR to merge updates its branch from main and fixes conflicts, just like any git workflow
+
+**No agent coordination needed.** Git + Slim CI handle parallel features. The cost of agent-to-agent communication would outweigh the benefit — let CI be the arbiter.
+
 ## Critical Rules
 
 **ALWAYS:**
