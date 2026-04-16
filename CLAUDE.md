@@ -67,10 +67,15 @@ This gives agents your actual table names, column types, lineage graph, and tran
    ```bash
    ls dbt_project.yml
    ```
-3. **If no `dbt_project.yml`:** ask the user which warehouse they're targeting (BigQuery, Snowflake, Databricks, Redshift, DuckDB). Then create the scaffold: `dbt_project.yml`, `packages.yml`, `profiles.yml`, folder structure. Use **DuckDB as default** for local dev if the user has no preference.
-4. Check if `packages.yml` exists — if not, create it with `dbt-labs/dbt_utils` at minimum.
-5. Run `$DBT_CMD deps` to install packages.
-6. Only proceed to Phase 1 once the project compiles with `$DBT_CMD parse`.
+3. **If no `dbt_project.yml`:** ask the user which warehouse they're targeting (BigQuery, Snowflake, Databricks, Redshift, DuckDB). Then create the scaffold: `dbt_project.yml`, `packages.yml`, folder structure. Use **DuckDB as default** for local dev if the user has no preference.
+4. **If no `profiles.yml`** and `project-config.yaml` exists: generate it automatically:
+   ```bash
+   ./scripts/generate-profiles.sh
+   ```
+   This reads warehouse connection from `project-config.yaml` and uses `env_var()` for sensitive values. The user must `source .env` before running dbt commands.
+5. Check if `packages.yml` exists — if not, create it with `dbt-labs/dbt_utils` at minimum.
+6. Run `$DBT_CMD deps` to install packages.
+7. Only proceed to Phase 1 once the project compiles with `$DBT_CMD parse`.
 
 > This phase is skipped if `dbt_project.yml` already exists and `$DBT_CMD parse` passes.
 
