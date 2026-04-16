@@ -11,7 +11,15 @@
     )
 }}
 
-with payments as (
+{% if is_incremental() %}
+with incremental_cutoff as (
+    select max(loaded_at) as max_loaded_at from {{ this }}
+),
+{% else %}
+with
+{% endif %}
+
+payments as (
 
     select
         payment_id,
@@ -29,7 +37,7 @@ with payments as (
     from {{ ref('stg_core_banking__loan_payments') }}
 
     {% if is_incremental() %}
-    where loaded_at > (select max(t.loaded_at) from {{ this }} t)
+    where loaded_at > (select max_loaded_at from incremental_cutoff)
     {% endif %}
 
 ),
