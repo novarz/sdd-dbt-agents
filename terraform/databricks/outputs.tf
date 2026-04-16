@@ -35,3 +35,16 @@ output "development_environment_id" {
   description = "dbt Platform Development environment ID"
   value       = dbtcloud_environment.development.environment_id
 }
+
+# ─── MCP outputs ──────────────────────────────────────────────────────────────
+
+output "mcp_token" {
+  description = "Service token for the dbt MCP server (metadata + semantic layer + job admin + developer)"
+  value       = dbtcloud_service_token.mcp.token_string
+  sensitive   = true
+}
+
+output "mcp_token_uid" {
+  description = "UID of the MCP service token"
+  value       = dbtcloud_service_token.mcp.uid
+}

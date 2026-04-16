@@ -185,27 +185,46 @@ and the service token mapping that were skipped in the first apply.
 
 ### Step 7 — Configure dbt Platform MCP server
 
-Check `project-config.yaml` → `mcp.auto_generate`. If `true`, write `.mcp.json` (gitignored) using the Terraform outputs.
+Check `project-config.yaml` → `mcp.auto_generate`. If `true`, configure `.mcp.json` automatically.
 
-Note: MCP `DBT_HOST` uses the URL **without** `/api` — strip the suffix from `dbt_platform.host_url` in `project-config.yaml`.
+1. Read the MCP service token from Terraform output and save it as env var:
+   ```bash
+   cd terraform/{warehouse}
+   MCP_TOKEN=$(terraform output -raw mcp_token)
+   PROD_ENV_ID=$(terraform output -raw production_environment_id)
+   ```
 
-```json
-{
-  "mcpServers": {
-    "dbt": {
-      "command": "uvx",
-      "args": ["dbt-mcp"],
-      "env": {
-        "DBT_HOST": "{dbt_host_without_api}",
-        "DBT_TOKEN": "{dbt_token}",
-        "DBT_ACCOUNT_ID": "{dbt_account_id}",
-        "DBT_PROJECT_ID": "{project_id}",
-        "DBT_PROD_ENVIRONMENT_ID": "{production_environment_id}"
-      }
-    }
-  }
-}
-```
+2. Add `DBT_MCP_TOKEN` to the user's `.env` file:
+   ```bash
+   echo 'export DBT_MCP_TOKEN="'"$MCP_TOKEN"'"' >> ../../.env
+   ```
+
+3. Read `dbt_platform.host_url` from `project-config.yaml` and strip `/api`:
+   ```
+   https://pk455.eu1.dbt.com/api → https://pk455.eu1.dbt.com
+   ```
+
+4. Write `.mcp.json` (gitignored). The token is referenced via env var — not hardcoded:
+   ```json
+   {
+     "mcpServers": {
+       "dbt": {
+         "command": "uvx",
+         "args": ["dbt-mcp"],
+         "env": {
+           "DBT_HOST": "{host_url_without_api}",
+           "DBT_TOKEN": "${DBT_MCP_TOKEN}",
+           "DBT_PROD_ENVIRONMENT_ID": "{production_environment_id}"
+         }
+       }
+     }
+   }
+   ```
+
+   The MCP service token has: `metadata_only` + `semantic_layer_only` + `job_admin` + `developer`.
+   This gives agents access to discovery API, semantic layer queries, and job execution.
+
+5. Tell the user to run `source .env` and **restart Claude Code** to load the MCP server.
 
 ### Step 8 — Done
 
@@ -213,11 +232,13 @@ Report to the orchestrator:
 - dbt Platform project URL
 - Production environment ID
 - Whether Semantic Layer was activated
-- Reminder: restart Claude Code to load the new MCP server
+- `.mcp.json` generated: yes/no
+- Reminder: `source .env` + **restart Claude Code**
 
 ## Critical rules
 
-- **NEVER** write `dbt_token`, `snowflake_password`, or `bq_service_account_json` to any file
+- **NEVER** write the admin token (`TF_VAR_dbt_token`), warehouse passwords, or service account keys to any file
+- The MCP token (`DBT_MCP_TOKEN`) is stored in `.env` (gitignored) — it has limited permissions (no account admin)
 - Always use env vars for sensitive values: `TF_VAR_dbt_token`, `TF_VAR_snowflake_password`
 - If `terraform apply` fails 3 times, stop and report the exact error
 - The repo must have at least one commit on `main` before Terraform runs (dbt Platform requirement)
