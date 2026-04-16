@@ -29,7 +29,7 @@ with payments as (
     from {{ ref('stg_core_banking__loan_payments') }}
 
     {% if is_incremental() %}
-    where loaded_at > (select max(loaded_at) from {{ this }})
+    where loaded_at > (select max(t.loaded_at) from {{ this }} t)
     {% endif %}
 
 ),
