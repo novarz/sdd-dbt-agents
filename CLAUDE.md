@@ -163,6 +163,53 @@ If yes:
 
 If no: mark Phase 6 as skipped in `progress.md` and close the workflow.
 
+## Iteration & Rollback
+
+The workflow is not strictly linear. Users may request changes at any point. The orchestrator must handle three scenarios:
+
+### A) Requirement changes after implementation
+
+When the user wants to modify requirements, design, or scope after Phase 4 has started:
+
+1. Identify the **earliest affected phase** — e.g., changing a metric definition affects Phase 1 (requirements), but changing a materialization strategy only affects Phase 2 (design).
+2. Go back to that phase and **update the existing spec** — do NOT create a new spec. Launch the corresponding subagent with the existing file path and the change request.
+3. **Propagate forward** through dependent phases only:
+   - Requirements changed → re-run design → re-plan only affected tasks → implement only what changed
+   - Design changed → re-plan affected tasks → implement only what changed
+   - Task-level change → re-implement that specific task only
+4. Log the iteration in `progress.md`:
+   ```
+   | Phase 2: Technical Design | 🔄 re-run | 2026-04-16 | User changed grain from daily to hourly |
+   ```
+
+### B) Subagent broke something
+
+When a subagent commit introduces a bug or breaks existing models:
+
+1. Identify the **specific commit** that caused the issue — each task produces exactly one commit (`[SDD-{feature}] T-{ID}: {description}`), so it's surgical.
+2. Revert that commit:
+   ```bash
+   git revert <commit_hash>
+   ```
+3. Re-launch the same subagent with the corrected task description and the error message from the failed build.
+4. Log the issue in `progress.md` under the Issues table.
+
+### C) Scope extension
+
+When the user wants to add new user stories or capabilities to an existing feature:
+
+1. **If the new scope shares sources/models** with the existing feature (e.g., "add a new metric on top of the same fact table") → amend the existing spec:
+   - Launch `spec-analyst` to update `requirements.md` with the new user stories
+   - Launch `dbt-architect` to update `design.md` if the DAG changes
+   - Launch `dbt-planner` to add new tasks to `tasks.md`
+   - Implement only the new/modified tasks
+
+2. **If the new scope is independent** (different sources, different domain) → start a new feature:
+   - Create a new `specs/{new_feature_name}/` directory
+   - Run the full workflow from Phase 1
+
+The orchestrator decides which path based on whether the new scope would modify existing models or only add new ones.
+
 ## Critical Rules
 
 **ALWAYS:**
