@@ -1,5 +1,5 @@
-# ─── dbt Cloud ───────────────────────────────────────────────────────────────
-dbt_account_id = 000                          # REPLACE: your dbt Cloud account ID
+# ─── dbt Platform ───────────────────────────────────────────────────────────────
+dbt_account_id = 000                          # REPLACE: your dbt Platform account ID
 dbt_host_url   = "https://emea.dbt.com/api"  # REPLACE: see docs/regions.md
 
 # ─── Project ─────────────────────────────────────────────────────────────────
@@ -11,12 +11,10 @@ git_remote_url         = "git@github.com:MY_ORG/MY_REPO.git"  # REPLACE
 git_clone_strategy     = "github_app"
 github_installation_id = 000000000            # REPLACE: see docs/find-github-installation-id.md
 
-# ─── Snowflake connection ────────────────────────────────────────────────────
-snowflake_account   = "MY_ACCOUNT"            # REPLACE: e.g. zna84829
-snowflake_database  = "MY_DATABASE"           # REPLACE
-snowflake_warehouse = "MY_WAREHOUSE"          # REPLACE
-snowflake_user      = "MY_USER"               # REPLACE
-snowflake_role      = ""                      # optional, leave empty for default
+# ─── Databricks connection ───────────────────────────────────────────────────
+databricks_host      = "https://dbc-a1b2c3d4-e5f6.cloud.databricks.com"  # REPLACE
+databricks_http_path = "/sql/1.0/warehouses/abc123def456"                 # REPLACE
+databricks_catalog   = "analytics"                                         # REPLACE
 
 # ─── Environments / schemas ──────────────────────────────────────────────────
 schema_prefix      = "dbt_myproject"          # REPLACE: schemas = {prefix}_dev / {prefix}_staging / {prefix}_prod
@@ -30,4 +28,4 @@ daily_job_schedule_hours = [6]                # UTC hour for the daily build
 # ─── SENSITIVE — never commit these ──────────────────────────────────────────
 # Set as environment variables before running terraform:
 #   export TF_VAR_dbt_token="dbtc_..."
-#   export TF_VAR_snowflake_password="..."
+#   export TF_VAR_databricks_token="dapi..."

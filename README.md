@@ -191,11 +191,9 @@ tu-proyecto-dbt/
 │       ├── review.md
 │       └── progress.md
 ├── terraform/                         ← Fase 6: Infraestructura dbt Platform
-│   ├── main.tf                        ← Recursos: proyecto, conexión, entornos, jobs, SL
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── providers.tf
-│   └── terraform.tfvars               ← Valores no sensibles (gitignoreado)
+│   ├── snowflake/                     ← Snowflake: conexión, credenciales, SL
+│   ├── bigquery/                      ← BigQuery: conexión, credenciales, SL
+│   └── databricks/                    ← Databricks: conexión, credenciales, SL
 ├── models/
 │   ├── staging/
 │   ├── intermediate/
@@ -294,13 +292,13 @@ Mostrar el review report con:
 Si se quiere mostrar el aprovisionamiento completo:
 
 ```bash
-cp .env.example .env   # rellenar con credenciales dbt Platform + Snowflake
+cp .env.example .env   # rellenar con credenciales dbt Platform + warehouse
 source .env
-cd terraform && terraform apply
+cd terraform/snowflake && terraform init && terraform apply   # o bigquery/ o databricks/
 ```
 
 El agente `dbt-infra` provisiona automáticamente via Terraform:
-- Proyecto dbt Platform + conexión Snowflake
+- Proyecto dbt Platform + conexión al warehouse (Snowflake, BigQuery o Databricks)
 - Entornos Development / Staging / Production (con branch custom)
 - Job diario (`dbt build`) + Slim CI (PR webhook)
 - Semantic Layer configuration + service token

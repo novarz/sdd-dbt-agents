@@ -1,10 +1,10 @@
 # How to find the GitHub App Installation ID
 
-The `github_installation_id` links your dbt Cloud account to a GitHub organization via the GitHub App.
+The `github_installation_id` links your dbt Platform account to a GitHub organization via the GitHub App.
 
-## Option 1 — via dbt Cloud API (recommended)
+## Option 1 — via dbt Platform API (recommended)
 
-You need an existing project in dbt Cloud with the GitHub App already connected.
+You need an existing project in dbt Platform with the GitHub App already connected.
 Then run:
 
 ```bash
@@ -21,11 +21,11 @@ Look for the entry with `"git_clone_strategy": "github_app"` — that `github_in
 
 Go to: `https://github.com/organizations/<YOUR_ORG>/settings/installations`
 
-Click on the dbt Cloud App installation → the ID is in the URL:
+Click on the dbt Platform App installation → the ID is in the URL:
 `https://github.com/organizations/MY_ORG/settings/installations/103071669`
                                                                   ^^^^^^^^^
 
 ## Notes
 
-- The installation ID is **per GitHub org**, not per repo or dbt Cloud project.
+- The installation ID is **per GitHub org**, not per repo or dbt Platform project.
 - If all your repos are in the same GitHub org, the ID is always the same.

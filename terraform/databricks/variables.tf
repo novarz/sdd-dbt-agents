@@ -1,17 +1,17 @@
-# ─── dbt Cloud ───────────────────────────────────────────────────────────────
+# ─── dbt Platform ───────────────────────────────────────────────────────────────
 
 variable "dbt_account_id" {
-  description = "dbt Cloud Account ID"
+  description = "dbt Platform Account ID"
   type        = number
 }
 
 variable "dbt_host_url" {
-  description = "dbt Cloud host URL (e.g. https://emea.dbt.com/api)"
+  description = "dbt Platform host URL (e.g. https://emea.dbt.com/api)"
   type        = string
 }
 
 variable "dbt_token" {
-  description = "dbt Cloud Service Token with Account Admin permissions"
+  description = "dbt Platform Service Token with Account Admin permissions"
   type        = string
   sensitive   = true
 }
@@ -19,7 +19,7 @@ variable "dbt_token" {
 # ─── Project ──────────────────────────────────────────────────────────────────
 
 variable "project_name" {
-  description = "Name of the dbt Cloud project"
+  description = "Name of the dbt Platform project"
   type        = string
 }
 
@@ -34,7 +34,7 @@ variable "dbt_version" {
 variable "git_branch" {
   description = "Git branch to use for all environments"
   type        = string
-  default     = "demo/loan-portfolio-risk"
+  default     = "main"
 }
 
 variable "git_remote_url" {
@@ -54,61 +54,50 @@ variable "github_installation_id" {
   default     = null
 }
 
-# ─── Snowflake connection ─────────────────────────────────────────────────────
+# ─── Databricks connection ───────────────────────────────────────────────────
 
-variable "snowflake_account" {
-  description = "Snowflake account identifier (e.g. zna84829)"
+variable "databricks_host" {
+  description = "Databricks workspace URL (e.g. https://dbc-a1b2c3d4-e5f6.cloud.databricks.com)"
   type        = string
 }
 
-variable "snowflake_database" {
-  description = "Snowflake database"
+variable "databricks_http_path" {
+  description = "HTTP path for SQL warehouse or cluster (e.g. /sql/1.0/warehouses/abc123)"
   type        = string
 }
 
-variable "snowflake_warehouse" {
-  description = "Snowflake virtual warehouse"
-  type        = string
-}
-
-variable "snowflake_user" {
-  description = "Snowflake user"
-  type        = string
-}
-
-variable "snowflake_password" {
-  description = "Snowflake password"
+variable "databricks_token" {
+  description = "Databricks personal access token"
   type        = string
   sensitive   = true
 }
 
-variable "snowflake_role" {
-  description = "Snowflake role (leave empty to use default)"
+variable "databricks_catalog" {
+  description = "Unity Catalog name (e.g. analytics)"
   type        = string
-  default     = ""
 }
 
 # ─── Environments / schemas ───────────────────────────────────────────────────
 
 variable "schema_prefix" {
-  description = "Prefix for all Snowflake schemas (e.g. dbt_myproject)"
+  description = "Prefix for all Databricks schemas (e.g. dbt_myproject)"
   type        = string
 }
 
 variable "schema_development" {
-  description = "Snowflake schema suffix for the Development environment"
+  description = "Schema suffix for the Development environment"
   type        = string
   default     = "dev"
 }
 
 variable "schema_staging" {
-  description = "Snowflake schema suffix for the Staging environment"
+  description = "Schema suffix for the Staging environment"
   type        = string
   default     = "staging"
 }
 
 variable "schema_production" {
-  description = "Snowflake schema suffix for the Production environment"
+  description = "Schema suffix for the Production environment"
   type        = string
   default     = "prod"
 }

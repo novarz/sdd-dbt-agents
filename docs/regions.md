@@ -1,4 +1,4 @@
-# dbt Cloud regions and host URLs
+# dbt Platform regions and host URLs
 
 | Region         | Cloud  | `dbt_host_url`                    |
 |----------------|--------|-----------------------------------|
