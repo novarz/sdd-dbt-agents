@@ -1,0 +1,11 @@
+branch_id,branch_name,region,zone,is_active
+BR001,Madrid Centro,centro,zona_a,true
+BR002,Madrid Norte,centro,zona_b,true
+BR003,Barcelona Gracia,este,zona_a,true
+BR004,Barcelona Eixample,este,zona_b,true
+BR005,Valencia Centro,este,zona_c,true
+BR006,Sevilla Centro,sur,zona_a,true
+BR007,Bilbao Abando,norte,zona_a,true
+BR008,Zaragoza Centro,norte,zona_b,true
+BR009,Malaga Puerto,sur,zona_b,true
+BR010,Palma Mallorca,este,zona_d,true

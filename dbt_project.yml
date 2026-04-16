@@ -52,3 +52,9 @@ seeds:
         delinquency_bucket: varchar
         ifrs9_stage: integer
         provision_rate: numeric
+    core_banking:
+      +database: ANALYTICS
+      +schema: dbt_sduran_core_banking
+    reference_data:
+      +database: ANALYTICS
+      +schema: dbt_sduran_reference_data

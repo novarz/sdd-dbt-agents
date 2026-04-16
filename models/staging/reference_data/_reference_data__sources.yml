@@ -3,8 +3,8 @@ version: 2
 sources:
   - name: reference_data
     description: "Datos de referencia de MDM"
-    database: "{{ env_var('DBT_SOURCE_DATABASE', target.database) }}"
-    schema: reference_data
+    database: ANALYTICS
+    schema: dbt_sduran_reference_data
     tables:
       - name: branches
         description: "Catalogo de sucursales activas. Grain: un registro por branch_id. ~500 filas."

@@ -3,8 +3,8 @@ version: 2
 sources:
   - name: core_banking
     description: "Datos transaccionales de Core Banking (Temenos Transact / Fusion)"
-    database: "{{ env_var('DBT_SOURCE_DATABASE', target.database) }}"
-    schema: core_banking
+    database: ANALYTICS
+    schema: dbt_sduran_core_banking
     config:
       loaded_at_field: loaded_at
       freshness:
