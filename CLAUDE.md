@@ -108,13 +108,16 @@ Before launching the subagent, ask the user these source availability questions 
 2. **Test ownership rule** (tell both agents explicitly in their prompts):
    - `dbt-developer` owns: `not_null`, `unique` (PKs), `relationships` (FKs) — written in the model YAML at creation time
    - `dbt-tester` owns: `accepted_values`, unit tests, custom data quality checks
-3. Group tasks by type:
-   - **Sources, models, seeds** → launch `dbt-developer`
+3. **If source data needs preparation** (requirements.md data strategy = seeds or demo scripts):
+   - Launch `dbt-source-loader` FIRST — it creates seeds, configures schemas, and verifies source availability
+   - Wait for completion before launching other subagents
+4. Group remaining tasks by type:
+   - **Sources, models** → launch `dbt-developer`
    - **`accepted_values`, unit tests, custom DQ tests** → launch `dbt-tester`
    - **Semantic Layer** (if spec requires metrics) → launch `dbt-semantic`
-4. Each subagent works on its tasks independently
-5. After each task: subagent commits with message referencing the task ID
-6. Update `progress.md` and report to user after each subagent completes
+5. Each subagent works on its tasks independently
+6. After each task: subagent commits with message referencing the task ID
+7. Update `progress.md` and report to user after each subagent completes
 
 ### Phase 5: Validation (dbt-reviewer)
 
@@ -258,6 +261,7 @@ Agents use different models based on whether the task requires analysis/judgment
 | dbt-architect | opus | Architectural decisions, trade-off analysis, Mesh assessment |
 | dbt-reviewer | opus | Judgment calls on quality, traceability validation |
 | dbt-planner | sonnet | Structured decomposition from clear inputs, speed matters |
+| dbt-source-loader | sonnet | Seed creation, schema config, data preparation |
 | dbt-developer | sonnet | Code generation from well-defined tasks, high volume |
 | dbt-tester | sonnet | Test generation from clear patterns, high volume |
 | dbt-semantic | sonnet | YAML generation from clear specs |

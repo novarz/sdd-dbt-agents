@@ -180,6 +180,7 @@ tu-proyecto-dbt/
 │       ├── spec-analyst.md            ← Fase 1: Requisitos
 │       ├── dbt-architect.md           ← Fase 2: Diseño técnico
 │       ├── dbt-planner.md             ← Fase 3: Descomposición en tareas
+│       ├── dbt-source-loader.md        ← Fase 4: Preparación de datos fuente
 │       ├── dbt-developer.md           ← Fase 4: Implementación SQL/YAML
 │       ├── dbt-tester.md              ← Fase 4: Tests genéricos + unit
 │       ├── dbt-semantic.md            ← Fase 4: Semantic Layer
@@ -347,6 +348,27 @@ Para ver la diferencia entre antes y después:
 ```bash
 git diff main...demo/loan-portfolio-risk
 ```
+
+## Teardown / Cleanup
+
+Para desmontar la infraestructura aprovisionada por el framework:
+
+```bash
+# 1. Destruir recursos de dbt Platform (proyecto, entornos, jobs, SL)
+source .env
+cd terraform/{snowflake|bigquery|databricks}
+terraform destroy
+
+# 2. Limpiar datos en el warehouse (opcional — seeds y modelos)
+dbt run-operation drop_schema --args '{schema: dbt_myproject_dev}'
+dbt run-operation drop_schema --args '{schema: dbt_myproject_staging}'
+dbt run-operation drop_schema --args '{schema: dbt_myproject_prod}'
+
+# 3. Limpiar ficheros locales
+rm -r project-config.yaml .env .mcp.json terraform/*/terraform.tfstate*
+```
+
+> `terraform destroy` elimina el proyecto de dbt Platform y todos sus recursos, pero NO borra datos del warehouse. Los schemas y tablas creados por dbt persisten hasta que se borren manualmente.
 
 ## Recursos
 
