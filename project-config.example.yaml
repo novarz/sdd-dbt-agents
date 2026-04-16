@@ -1,0 +1,79 @@
+# project-config.yaml — Single entry point for all framework configuration
+# Copy to project-config.yaml and fill in your values.
+# The dbt-infra agent reads this file to generate terraform.tfvars, .mcp.json, and profiles.yml.
+#
+# SENSITIVE values (tokens, passwords, keys) go in .env — never in this file.
+
+# ─── Warehouse Platform ──────────────────────────────────────────────────────
+# Which warehouse to use. Determines which terraform/{platform}/ directory to apply.
+warehouse_platform: "snowflake"  # snowflake | bigquery | databricks
+
+# ─── dbt Platform ────────────────────────────────────────────────────────────
+dbt_platform:
+  account_id: 000                          # REPLACE: your dbt Platform account ID
+  host_url: "https://emea.dbt.com/api"    # REPLACE: see docs/regions.md
+  project_name: "my_project"               # REPLACE
+  dbt_version: "versionless"
+
+# ─── Git Repository ──────────────────────────────────────────────────────────
+git:
+  remote_url: "git@github.com:MY_ORG/MY_REPO.git"  # REPLACE
+  branch: "main"                                     # branch for all environments
+  clone_strategy: "github_app"                       # github_app | deploy_key
+  github_installation_id: 000000000                  # REPLACE: see docs/find-github-installation-id.md
+
+# ─── Warehouse Connection (fill the section matching your warehouse_platform) ─
+
+snowflake:
+  account: "MY_ACCOUNT"          # REPLACE: e.g. zna84829
+  database: "MY_DATABASE"        # REPLACE
+  warehouse: "MY_WAREHOUSE"      # REPLACE
+  user: "MY_USER"                # REPLACE
+  role: ""                       # optional, leave empty for default
+
+bigquery:
+  gcp_project_id: "MY_GCP_PROJECT"                                        # REPLACE
+  location: "US"                                                           # US, EU, us-central1, etc.
+  client_email: "sa@my-project.iam.gserviceaccount.com"                    # REPLACE
+  client_id: "000000000000000000000"                                       # REPLACE
+  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/sa%40my-project.iam.gserviceaccount.com"  # REPLACE
+  timeout_seconds: 300
+  retries: 1
+
+databricks:
+  host: "https://dbc-a1b2c3d4-e5f6.cloud.databricks.com"   # REPLACE
+  http_path: "/sql/1.0/warehouses/abc123def456"              # REPLACE
+  catalog: "analytics"                                        # REPLACE: Unity Catalog name
+
+# ─── Environments / Schemas ──────────────────────────────────────────────────
+schemas:
+  prefix: "dbt_myproject"        # REPLACE: schemas = {prefix}_dev / {prefix}_staging / {prefix}_prod
+  development: "dev"
+  staging: "staging"
+  production: "prod"
+
+# ─── Jobs ────────────────────────────────────────────────────────────────────
+jobs:
+  daily_schedule_hours: [6]      # UTC hours for the daily build
+
+# ─── MCP Server (auto-generated after deploy) ────────────────────────────────
+# After Phase 6, the dbt-infra agent generates .mcp.json from terraform outputs.
+# Set to true to enable automatic generation.
+mcp:
+  auto_generate: true
+
+# ─── SENSITIVE — export these as env vars, never write them here ─────────────
+# cp .env.example .env && chmod 600 .env
+#
+# All platforms:
+#   export TF_VAR_dbt_token="dbtc_..."
+#
+# Snowflake:
+#   export TF_VAR_snowflake_password="..."
+#
+# BigQuery:
+#   export TF_VAR_bigquery_private_key_id="..."
+#   export TF_VAR_bigquery_private_key="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
+#
+# Databricks:
+#   export TF_VAR_databricks_token="dapi..."

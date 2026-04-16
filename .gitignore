@@ -17,8 +17,8 @@ profiles.yml
 
 # Terraform (covered by terraform/.gitignore for subdirectories)
 
-# dbt Platform project config (contains credentials)
-dbt-project.yaml
+# Project config (project-specific values, not secrets but not shared)
+project-config.yaml
 
 # OS
 .DS_Store
