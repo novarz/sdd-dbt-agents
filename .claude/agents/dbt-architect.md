@@ -118,17 +118,26 @@ models:
 
 ## 4. Sources
 
+Source database/schema must use dbt vars (from `project-config.yaml`) — never hardcode:
+
 ```yaml
 sources:
   - name: {source_name}
-    database: {database}
-    schema: {schema}
+    database: "{{ var('source_database') }}"
+    schema: "{{ var('source_schema_prefix') }}_{source_name}"
     tables:
       - name: {table}
         loaded_at_field: {timestamp_column}
         freshness:
           warn_after: {count: 12, period: hour}
           error_after: {count: 24, period: hour}
+```
+
+**dbt_project.yml vars** (values from `project-config.yaml → sources`):
+```yaml
+vars:
+  source_database: "{from project-config.yaml}"
+  source_schema_prefix: "{from project-config.yaml}"
 ```
 
 ## 5. Estrategia de Materialización

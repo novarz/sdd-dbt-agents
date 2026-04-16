@@ -52,6 +52,27 @@ schemas:
   staging: "staging"
   production: "prod"
 
+# ─── Source Schemas ───────────────────────────────────────────────────────────
+# Define where source tables live. Agents use these values to generate source
+# YAMLs with dbt vars, making them dynamic across environments.
+#
+# Each source maps to a database and schema. The agents generate:
+#   database: "{{ var('source_database') }}"
+#   schema:   "{{ var('source_schema_prefix') }}_{source_name}"
+#
+# If all sources share the same database, set source_database once.
+# If sources use different databases, override per source below.
+sources:
+  source_database: "ANALYTICS"           # REPLACE: default database for all sources
+  source_schema_prefix: "dbt_myproject"  # REPLACE: prefix for source schemas (e.g. dbt_sduran)
+  # Per-source overrides (optional — only if a source uses a different database/schema):
+  # overrides:
+  #   core_banking:
+  #     database: "RAW_DATA"
+  #     schema: "core_banking_raw"
+  #   reference_data:
+  #     schema: "ref_data"
+
 # ─── Jobs ────────────────────────────────────────────────────────────────────
 jobs:
   daily_schedule_hours: [6]      # UTC hours for the daily build

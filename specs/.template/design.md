@@ -56,17 +56,26 @@ models:
 
 ## 4. Source Contracts
 
+Source database/schema use dbt vars (values from `project-config.yaml → sources`):
+
 ```yaml
 sources:
   - name: {source_name}
-    database: {database}
-    schema: {schema}
+    database: "{{ var('source_database') }}"
+    schema: "{{ var('source_schema_prefix') }}_{source_name}"
     tables:
       - name: {table}
         loaded_at_field: {timestamp_column}
         freshness:
           warn_after: {count: 12, period: hour}
           error_after: {count: 24, period: hour}
+```
+
+**dbt_project.yml vars:**
+```yaml
+vars:
+  source_database: "{value}"
+  source_schema_prefix: "{value}"
 ```
 
 **Estrategia para sources no disponibles:**

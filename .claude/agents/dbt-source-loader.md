@@ -58,13 +58,19 @@ For each missing source table, create a CSV seed with realistic sample data:
 - Use realistic value distributions (not all the same category)
 - File path: `seeds/{source_name}/{table_name}.csv`
 
-**Configure seed schemas in `dbt_project.yml`:**
+**Configure seed schemas in `dbt_project.yml`** using the values from `project-config.yaml`:
+
 ```yaml
+# Read sources.source_database and sources.source_schema_prefix from project-config.yaml
+vars:
+  source_database: "ANALYTICS"              # from project-config.yaml → sources.source_database
+  source_schema_prefix: "dbt_myproject"     # from project-config.yaml → sources.source_schema_prefix
+
 seeds:
   {project_name}:
     {source_name}:
-      +database: {database}
-      +schema: {schema}
+      +database: "{{ var('source_database') }}"
+      +schema: "{{ var('source_schema_prefix') }}_{source_name}"
 ```
 
 ### Step 4 — Handle schema naming
@@ -93,18 +99,40 @@ If not, create it:
 {%- endmacro %}
 ```
 
-### Step 5 — Configure source YAML
+### Step 5 — Configure source YAML with vars
 
-Ensure source definitions point to the correct database/schema. If sources use hardcoded schemas (shared database), set them explicitly:
+Read `project-config.yaml` → `sources` section. Generate source YAML using dbt vars so schemas are dynamic across environments:
 
 ```yaml
 sources:
   - name: {source_name}
-    database: {database}        # explicit, not default
-    schema: {schema}            # explicit, not target.schema
+    database: "{{ var('source_database') }}"
+    schema: "{{ var('source_schema_prefix') }}_{source_name}"
     tables:
       - name: {table}
 ```
+
+**If a source has an override** in `project-config.yaml → sources.overrides`:
+```yaml
+sources:
+  - name: {source_name}
+    database: "{{ var('source_{source_name}_database', var('source_database')) }}"
+    schema: "{{ var('source_{source_name}_schema') }}"
+    tables:
+      - name: {table}
+```
+
+Add the override vars to `dbt_project.yml`:
+```yaml
+vars:
+  source_database: "ANALYTICS"
+  source_schema_prefix: "dbt_myproject"
+  # Per-source overrides from project-config.yaml
+  source_core_banking_database: "RAW_DATA"
+  source_core_banking_schema: "core_banking_raw"
+```
+
+This way, environments can override source locations via `--vars` or environment-specific `dbt_project.yml` configs without modifying source YAML files.
 
 ### Step 6 — Load and verify
 
