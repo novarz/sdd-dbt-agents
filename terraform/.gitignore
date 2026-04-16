@@ -5,6 +5,7 @@
 .terraform.lock.hcl
 
 # Sensitive variable files
+terraform.tfvars
 secrets.auto.tfvars
 *.sensitive.tfvars
 

@@ -1,0 +1,119 @@
+# ─── dbt Platform ───────────────────────────────────────────────────────────────
+
+variable "dbt_account_id" {
+  description = "dbt Platform Account ID"
+  type        = number
+}
+
+variable "dbt_host_url" {
+  description = "dbt Platform host URL (e.g. https://emea.dbt.com/api)"
+  type        = string
+}
+
+variable "dbt_token" {
+  description = "dbt Platform Service Token with Account Admin permissions"
+  type        = string
+  sensitive   = true
+}
+
+# ─── Project ──────────────────────────────────────────────────────────────────
+
+variable "project_name" {
+  description = "Name of the dbt Platform project"
+  type        = string
+}
+
+variable "dbt_version" {
+  description = "dbt version for environments (use 'versionless' for latest)"
+  type        = string
+  default     = "versionless"
+}
+
+# ─── Git repository ───────────────────────────────────────────────────────────
+
+variable "git_branch" {
+  description = "Git branch to use for all environments"
+  type        = string
+  default     = "main"
+}
+
+variable "git_remote_url" {
+  description = "SSH URL of the git repository (e.g. git@github.com:org/repo.git)"
+  type        = string
+}
+
+variable "git_clone_strategy" {
+  description = "Clone strategy: github_app | deploy_key | azure_active_directory_app"
+  type        = string
+  default     = "github_app"
+}
+
+variable "github_installation_id" {
+  description = "GitHub App installation ID. If null, auto-discovered via GITHUB_TOKEN + GITHUB_ORG env vars."
+  type        = number
+  default     = null
+}
+
+# ─── Databricks connection ───────────────────────────────────────────────────
+
+variable "databricks_host" {
+  description = "Databricks workspace URL (e.g. https://dbc-a1b2c3d4-e5f6.cloud.databricks.com)"
+  type        = string
+}
+
+variable "databricks_http_path" {
+  description = "HTTP path for SQL warehouse or cluster (e.g. /sql/1.0/warehouses/abc123)"
+  type        = string
+}
+
+variable "databricks_token" {
+  description = "Databricks personal access token"
+  type        = string
+  sensitive   = true
+}
+
+variable "databricks_catalog" {
+  description = "Unity Catalog name (e.g. analytics)"
+  type        = string
+}
+
+# ─── Environments / schemas ───────────────────────────────────────────────────
+
+variable "schema_prefix" {
+  description = "Prefix for all Databricks schemas (e.g. dbt_myproject)"
+  type        = string
+}
+
+variable "schema_development" {
+  description = "Schema suffix for the Development environment"
+  type        = string
+  default     = "dev"
+}
+
+variable "schema_staging" {
+  description = "Schema suffix for the Staging environment"
+  type        = string
+  default     = "staging"
+}
+
+variable "schema_production" {
+  description = "Schema suffix for the Production environment"
+  type        = string
+  default     = "prod"
+}
+
+# ─── Semantic Layer ───────────────────────────────────────────────────────────
+
+variable "enable_semantic_layer" {
+  description = "Set to true only after a successful production job run exists"
+  type        = bool
+  default     = false
+}
+
+# ─── Jobs ─────────────────────────────────────────────────────────────────────
+
+variable "daily_job_schedule_hours" {
+  description = "UTC hours at which the daily job runs (list)"
+  type        = list(number)
+  default     = [6]
+}

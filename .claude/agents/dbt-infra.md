@@ -120,7 +120,12 @@ If the API call fails, returns empty, or the user has a personal account (not an
 
 ### Step 6 — Generate terraform.tfvars
 
-Copy `terraform/terraform.tfvars.example` to `terraform/terraform.tfvars` and fill in all non-sensitive values from `dbt-project.yaml`. Never write tokens or passwords.
+Determine the warehouse platform from `requirements.md` (section 6). Use the matching subdirectory:
+- Snowflake → `terraform/snowflake/`
+- BigQuery → `terraform/bigquery/`
+- Databricks → `terraform/databricks/`
+
+Copy `terraform/{warehouse}/terraform.tfvars.example` to `terraform/{warehouse}/terraform.tfvars` and fill in all non-sensitive values from `dbt-project.yaml`. Never write tokens or passwords.
 
 ### Step 7 — Ensure repo exists on GitHub
 
@@ -138,7 +143,7 @@ git push -u origin main
 ### Step 8 — Run Terraform
 
 ```bash
-cd terraform
+cd terraform/{warehouse}
 terraform init
 terraform apply -auto-approve
 ```
