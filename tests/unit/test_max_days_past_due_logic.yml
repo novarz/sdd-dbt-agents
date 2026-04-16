@@ -1,0 +1,130 @@
+version: 2
+
+# Traceability: CA-02 / T-26
+# Validates that int_loan__max_days_past_due correctly computes the maximum
+# days_past_due across all overdue unpaid/partial installments for a given loan.
+# Edge cases covered:
+#   - Multiple payments with different DPD values → returns the maximum
+#   - Loan with no unpaid/partial payments → returns 0 (COALESCE default)
+#   - Loan with 'paid' payments only → returns 0 (filtered out)
+
+unit_tests:
+  - name: test_max_days_past_due_logic
+    description: >
+      Validates that int_loan__max_days_past_due correctly returns the MAX of
+      days_past_due across unpaid/partial payments. Given payments with DPD
+      values [10, 45, 30] for a single loan, the result must be 45.
+      Loans with no overdue payments (or all paid) must return 0.
+      Traceability: CA-02 from requirements.md
+    model: int_loan__max_days_past_due
+
+    given:
+      - input: ref('stg_core_banking__loans')
+        rows:
+          # Loan with multiple overdue payments
+          - loan_id: "L001"
+            customer_id: "C001"
+            product_type: "mortgage"
+            outstanding_balance: 100000.00
+            loan_status: "active"
+            account_id: "A001"
+            original_amount: 120000.00
+            interest_rate: 0.035
+            collateral_value: 150000.00
+            loan_to_value: 0.667
+            origination_date: "2022-01-01"
+            maturity_date: "2042-01-01"
+            risk_rating: "BBB"
+            loaded_at: "2026-04-15T02:00:00"
+          # Loan with only paid payments → max_dpd = 0
+          - loan_id: "L002"
+            customer_id: "C002"
+            product_type: "consumer"
+            outstanding_balance: 5000.00
+            loan_status: "active"
+            account_id: "A002"
+            original_amount: 8000.00
+            interest_rate: 0.08
+            collateral_value: null
+            loan_to_value: null
+            origination_date: "2023-06-01"
+            maturity_date: "2026-06-01"
+            risk_rating: "BB"
+            loaded_at: "2026-04-15T02:00:00"
+          # Loan with no payments at all → max_dpd = 0 (COALESCE)
+          - loan_id: "L003"
+            customer_id: "C003"
+            product_type: "business"
+            outstanding_balance: 50000.00
+            loan_status: "active"
+            account_id: "A003"
+            original_amount: 60000.00
+            interest_rate: 0.05
+            collateral_value: null
+            loan_to_value: null
+            origination_date: "2025-01-01"
+            maturity_date: "2035-01-01"
+            risk_rating: "A"
+            loaded_at: "2026-04-15T02:00:00"
+
+      - input: ref('stg_core_banking__loan_payments')
+        rows:
+          # L001: three unpaid/partial payments with DPD [10, 45, 30] → MAX = 45
+          - payment_id: "P001"
+            loan_id: "L001"
+            due_date: "2026-01-15"
+            payment_date: null
+            amount_due: 1000.00
+            amount_paid: null
+            principal_component: 800.00
+            interest_component: 200.00
+            days_past_due: 10
+            payment_status: "unpaid"
+            loaded_at: "2026-04-15T02:00:00"
+          - payment_id: "P002"
+            loan_id: "L001"
+            due_date: "2026-02-15"
+            payment_date: null
+            amount_due: 1000.00
+            amount_paid: null
+            principal_component: 800.00
+            interest_component: 200.00
+            days_past_due: 45
+            payment_status: "unpaid"
+            loaded_at: "2026-04-15T02:00:00"
+          - payment_id: "P003"
+            loan_id: "L001"
+            due_date: "2026-03-15"
+            payment_date: null
+            amount_due: 1000.00
+            amount_paid: 500.00
+            principal_component: 800.00
+            interest_component: 200.00
+            days_past_due: 30
+            payment_status: "partial"
+            loaded_at: "2026-04-15T02:00:00"
+          # L002: only paid payments — filtered out → max_dpd = 0
+          - payment_id: "P004"
+            loan_id: "L002"
+            due_date: "2026-01-15"
+            payment_date: "2026-01-14"
+            amount_due: 300.00
+            amount_paid: 300.00
+            principal_component: 250.00
+            interest_component: 50.00
+            days_past_due: 0
+            payment_status: "paid"
+            loaded_at: "2026-04-15T02:00:00"
+          # L003 has no payments — LEFT JOIN will COALESCE to 0
+
+    expect:
+      rows:
+        # Primary scenario from T-26 spec: MAX([10, 45, 30]) = 45
+        - loan_id: "L001"
+          max_days_past_due: 45
+        # All paid: no unpaid/partial payments → COALESCE(MAX(null), 0) = 0
+        - loan_id: "L002"
+          max_days_past_due: 0
+        # No payments at all → COALESCE(MAX(null), 0) = 0
+        - loan_id: "L003"
+          max_days_past_due: 0

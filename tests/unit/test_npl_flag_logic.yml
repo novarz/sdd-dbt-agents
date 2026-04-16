@@ -1,0 +1,115 @@
+version: 2
+
+# Traceability: CA-01 / T-24
+# Validates that fct_loan_daily_snapshot correctly sets is_npl based on
+# delinquency_bucket. Only loans with delinquency_bucket = 'over_90' are NPL.
+# All other buckets (including 61_90) must have is_npl = false.
+
+unit_tests:
+  - name: test_npl_flag_logic
+    description: >
+      Validates that fct_loan_daily_snapshot correctly derives is_npl:
+      - delinquency_bucket = 'over_90' → is_npl = true
+      - delinquency_bucket = '61_90'   → is_npl = false
+      - delinquency_bucket = '31_60'   → is_npl = false
+      - delinquency_bucket = 'current' → is_npl = false
+      Traceability: CA-01 from requirements.md
+    model: fct_loan_daily_snapshot
+
+    overrides:
+      macros:
+        is_incremental: false
+
+    given:
+      - input: ref('int_loan__provisions')
+        rows:
+          - loan_id: "L001"
+            customer_id: "C001"
+            product_type: "mortgage"
+            outstanding_balance: 100000.00
+            loan_status: "active"
+            max_days_past_due: 120
+            delinquency_bucket: "over_90"
+            ifrs9_stage: 3
+            provision_rate: 1.00
+            provision_amount: 100000.00
+          - loan_id: "L002"
+            customer_id: "C002"
+            product_type: "consumer"
+            outstanding_balance: 15000.00
+            loan_status: "active"
+            max_days_past_due: 75
+            delinquency_bucket: "61_90"
+            ifrs9_stage: 2
+            provision_rate: 0.25
+            provision_amount: 3750.00
+          - loan_id: "L003"
+            customer_id: "C003"
+            product_type: "business"
+            outstanding_balance: 50000.00
+            loan_status: "restructured"
+            max_days_past_due: 45
+            delinquency_bucket: "31_60"
+            ifrs9_stage: 2
+            provision_rate: 0.10
+            provision_amount: 5000.00
+          - loan_id: "L004"
+            customer_id: "C004"
+            product_type: "credit_line"
+            outstanding_balance: 25000.00
+            loan_status: "active"
+            max_days_past_due: 0
+            delinquency_bucket: "current"
+            ifrs9_stage: 1
+            provision_rate: 0.01
+            provision_amount: 250.00
+
+      - input: ref('dim_customer')
+        rows:
+          - customer_id: "C001"
+            branch_id: "B001"
+            segment: "retail"
+            customer_type: "individual"
+            branch_name: "Sucursal Norte"
+            region: "norte"
+            zone: "zona_a"
+            country: "ES"
+            registration_date: "2018-01-01"
+          - customer_id: "C002"
+            branch_id: "B001"
+            segment: "premium"
+            customer_type: "individual"
+            branch_name: "Sucursal Norte"
+            region: "norte"
+            zone: "zona_a"
+            country: "ES"
+            registration_date: "2019-05-15"
+          - customer_id: "C003"
+            branch_id: "B002"
+            segment: "sme"
+            customer_type: "business"
+            branch_name: "Sucursal Sur"
+            region: "sur"
+            zone: "zona_b"
+            country: "ES"
+            registration_date: "2020-03-20"
+          - customer_id: "C004"
+            branch_id: "B002"
+            segment: "corporate"
+            customer_type: "business"
+            branch_name: "Sucursal Sur"
+            region: "sur"
+            zone: "zona_b"
+            country: "ES"
+            registration_date: "2017-11-30"
+
+    expect:
+      rows:
+        - loan_id: "L001"
+          is_npl: true
+        - loan_id: "L002"
+          is_npl: false
+        - loan_id: "L003"
+          is_npl: false
+        - loan_id: "L004"
+          is_npl: false

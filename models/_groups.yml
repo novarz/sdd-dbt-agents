@@ -1,0 +1,12 @@
+version: 2
+
+groups:
+  - name: risk_data_engineering
+    owner:
+      name: Risk Data Engineering
+      email: risk-data-eng@bank.com
+
+  - name: risk_analytics
+    owner:
+      name: Risk Analytics
+      email: risk-analytics@bank.com

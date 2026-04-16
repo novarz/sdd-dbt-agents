@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: int_loan__max_days_past_due
+    description: >
+      Ephemeral model. Grain: one row per loan_id (all loans from stg_core_banking__loans).
+      Computes the maximum days_past_due across all overdue unpaid or partial installments
+      where due_date <= current_date. Loans with no overdue payments receive max_days_past_due = 0.
+      This value is the input for delinquency band classification (CA-02).
+    config:
+      materialized: ephemeral
+    columns:
+      - name: loan_id
+        description: "PK del prestamo"
+      - name: max_days_past_due
+        description: >
+          Maximo de days_past_due entre las cuotas vencidas no pagadas (unpaid/partial)
+          con due_date <= hoy. Valor 0 si no hay cuotas en mora.
+
+  - name: int_loan__delinquency_bands
+    description: >
+      Ephemeral model. Grain: one row per loan_id.
+      Only includes loans with loan_status IN ('active', 'restructured') per CA-01.
+      Classifies each loan into a delinquency bucket (current, 1_30, 31_60, 61_90, over_90)
+      and assigns IFRS 9 stage (1=performing, 2=underperforming, 3=non-performing) based on
+      max_days_past_due from int_loan__max_days_past_due. Implements CA-02.
+    config:
+      materialized: ephemeral
+    columns:
+      - name: loan_id
+        description: "PK del prestamo"
+      - name: customer_id
+        description: "FK a customers"
+      - name: product_type
+        description: "Tipo de producto del prestamo"
+      - name: outstanding_balance
+        description: "Saldo vivo actual en EUR"
+      - name: loan_status
+        description: "Estado del prestamo (solo active/restructured)"
+      - name: max_days_past_due
+        description: "Maximo dias de mora de las cuotas vencidas impagadas"
+      - name: delinquency_bucket
+        description: >
+          Bucket de morosidad asignado:
+          current (0 dias), 1_30 (1-30 dias), 31_60 (31-60 dias),
+          61_90 (61-90 dias), over_90 (>90 dias)
+      - name: ifrs9_stage
+        description: "IFRS 9 stage: 1 (performing), 2 (underperforming), 3 (non-performing)"
+
+  - name: int_loan__provisions
+    description: >
+      Ephemeral model. Grain: one row per loan_id.
+      Joins int_loan__delinquency_bands with the ifrs9_provision_rates seed to calculate
+      provision_amount = outstanding_balance * provision_rate.
+      Provision rates are NOT hardcoded — they come from the seed to ensure auditability (CA-04).
+    config:
+      materialized: ephemeral
+    columns:
+      - name: loan_id
+        description: "PK del prestamo"
+      - name: customer_id
+        description: "FK a customers"
+      - name: product_type
+        description: "Tipo de producto del prestamo"
+      - name: outstanding_balance
+        description: "Saldo vivo actual en EUR"
+      - name: loan_status
+        description: "Estado del prestamo"
+      - name: max_days_past_due
+        description: "Maximo dias de mora de las cuotas vencidas impagadas"
+      - name: delinquency_bucket
+        description: "Bucket de morosidad asignado"
+      - name: ifrs9_stage
+        description: "IFRS 9 stage: 1, 2 o 3"
+      - name: provision_rate
+        description: "Tasa de provision IFRS 9 aplicada (proveniente del seed ifrs9_provision_rates)"
+      - name: provision_amount
+        description: "Importe provisionado en EUR: outstanding_balance * provision_rate"
