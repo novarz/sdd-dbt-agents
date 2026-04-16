@@ -32,43 +32,29 @@ resource "dbtcloud_project" "this" {
 
 # ─── GitHub App installation ID discovery ────────────────────────────────────
 # If github_installation_id is not set in tfvars, auto-discovers it via the
-# GitHub API using GITHUB_TOKEN and GITHUB_ORG env vars.
+# GitHub API using gh CLI and GITHUB_ORG env var.
 
-resource "null_resource" "discover_github_installation" {
-  count = var.github_installation_id == null ? 1 : 0
-
-  triggers = {
-    git_remote_url = var.git_remote_url
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      # Ensure gh CLI has admin:org scope (required to list App installations)
-      gh auth refresh -h github.com -s admin:org 2>/dev/null || true
-
-      if [ -n "$GITHUB_ORG" ]; then
-        INSTALL_ID=$(gh api "orgs/$GITHUB_ORG/installations" \
-          --jq '.installations[] | select(.app_slug | test("dbt")) | .id' 2>/dev/null | head -1)
-      else
-        # Personal account: gh can't list user installations — fall back to web UI
-        INSTALL_ID=""
-      fi
-
-      if [ -z "$INSTALL_ID" ]; then
-        echo "ERROR: Could not auto-discover the GitHub App installation ID."
-        echo "Find it manually at: https://github.com/organizations/$GITHUB_ORG/settings/installations"
-        echo "Then set github_installation_id in terraform/terraform.tfvars."
-        exit 1
-      fi
-      echo "GitHub App installation ID discovered: $INSTALL_ID"
-      echo "$INSTALL_ID" > /tmp/github_installation_id.txt
-    EOT
-  }
+data "external" "github_installation" {
+  count   = var.github_installation_id == null ? 1 : 0
+  program = ["bash", "-c", <<-EOT
+    gh auth refresh -h github.com -s admin:org 2>/dev/null || true
+    if [ -n "$GITHUB_ORG" ]; then
+      INSTALL_ID=$(gh api "orgs/$GITHUB_ORG/installations" \
+        --jq '.installations[] | select(.app_slug | test("dbt")) | .id' 2>/dev/null | head -1)
+    fi
+    if [ -z "$INSTALL_ID" ]; then
+      echo '{"error": "Could not auto-discover. Set github_installation_id in project-config.yaml. See docs/find-github-installation-id.md"}' >&2
+      echo '{"id": "0"}'
+    else
+      echo "{\"id\": \"$INSTALL_ID\"}"
+    fi
+  EOT
+  ]
 }
 
 locals {
   github_installation_id = var.github_installation_id != null ? var.github_installation_id : (
-    fileexists("/tmp/github_installation_id.txt") ? tonumber(trimspace(file("/tmp/github_installation_id.txt"))) : null
+    tonumber(data.external.github_installation[0].result.id)
   )
 }
 
@@ -79,8 +65,6 @@ resource "dbtcloud_repository" "this" {
   remote_url             = var.git_remote_url
   git_clone_strategy     = var.git_clone_strategy
   github_installation_id = local.github_installation_id
-
-  depends_on = [null_resource.discover_github_installation]
 }
 
 # ─── Global connection (Snowflake) ────────────────────────────────────────────
