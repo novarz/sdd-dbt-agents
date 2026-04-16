@@ -68,11 +68,11 @@ This gives agents your actual table names, column types, lineage graph, and tran
    ls dbt_project.yml
    ```
 3. **If no `dbt_project.yml`:** ask the user which warehouse they're targeting (BigQuery, Snowflake, Databricks, Redshift, DuckDB). Then create the scaffold: `dbt_project.yml`, `packages.yml`, folder structure. Use **DuckDB as default** for local dev if the user has no preference.
-4. **If no `profiles.yml`** and `project-config.yaml` exists: generate it automatically:
+4. **If no `profiles.yml`** and the user needs local execution (dbt Fusion or dbt Core — NOT dbt Cloud CLI):
    ```bash
    ./scripts/generate-profiles.sh
    ```
-   This reads warehouse connection from `project-config.yaml` and uses `env_var()` for sensitive values. The user must `source .env` before running dbt commands.
+   This reads warehouse connection from `project-config.yaml` and uses `env_var()` for sensitive values. The user must `source .env` before running dbt commands. Skip this step if using dbt Cloud CLI or only deploying via Phase 6.
 5. Check if `packages.yml` exists — if not, create it with `dbt-labs/dbt_utils` at minimum.
 6. Run `$DBT_CMD deps` to install packages.
 7. Only proceed to Phase 1 once the project compiles with `$DBT_CMD parse`.
