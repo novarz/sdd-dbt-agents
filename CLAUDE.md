@@ -156,13 +156,14 @@ Ask the user explicitly:
 
 If yes:
 1. Run the preflight check above
-2. Ask the user to run `source .env` in their terminal — credentials must be exported as env vars, **never shared in chat**
-3. Launch `dbt-infra` subagent with `mode: "bypassPermissions"` and path to `specs/{feature_name}/requirements.md` — bypass is required so the subagent can write files and run Terraform without repeated permission prompts
-4. Subagent provisions: dbt Platform project, connection, environments (dev/staging/prod), Slim CI job, daily build jobs, Semantic Layer, and `.mcp.json`
-5. Before triggering the first production job run, verify source tables exist in Snowflake. If not, resolve according to the data strategy defined in `requirements.md` (load seeds, run demo scripts, or ask user to confirm external load)
-6. After first successful job run: re-run `terraform apply -var="enable_semantic_layer=true"` to activate Semantic Layer
-7. Update `progress.md`: Phase 6 complete — include dbt Platform project URL
-8. **GATE: Do NOT proceed until user confirms infrastructure is up**
+2. Validate `project-config.yaml`: `./scripts/validate-config.sh` — fix any errors before proceeding
+3. Ask the user to run `source .env` in their terminal — credentials must be exported as env vars, **never shared in chat**
+4. Launch `dbt-infra` subagent with `mode: "bypassPermissions"` and path to `specs/{feature_name}/requirements.md` — bypass is required so the subagent can write files and run Terraform without repeated permission prompts
+5. Subagent provisions: dbt Platform project, connection, environments (dev/staging/prod), Slim CI job, daily build jobs, Semantic Layer, and `.mcp.json`
+6. Before triggering the first production job run, verify source tables exist in the warehouse. If not, resolve according to the data strategy defined in `requirements.md` (load seeds, run demo scripts, or ask user to confirm external load)
+7. After first successful job run: re-run `terraform apply -var="enable_semantic_layer=true"` to activate Semantic Layer
+8. Update `progress.md`: Phase 6 complete — include dbt Platform project URL
+9. **GATE: Do NOT proceed until user confirms infrastructure is up**
 
 If no: mark Phase 6 as skipped in `progress.md` and close the workflow.
 
