@@ -431,3 +431,6 @@ models:
           - type: not_null
         tests:
           - not_null
+      - name: loaded_at
+        description: "Timestamp de carga del registro en el warehouse"
+        data_type: timestamp_ntz
