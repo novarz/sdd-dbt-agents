@@ -34,7 +34,7 @@ variable "dbt_version" {
 variable "git_branch" {
   description = "Git branch to use for all environments"
   type        = string
-  default     = "demo/loan-portfolio-risk"
+  default     = "main"
 }
 
 variable "git_remote_url" {
