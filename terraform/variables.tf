@@ -1,17 +1,17 @@
-# ─── dbt Cloud ───────────────────────────────────────────────────────────────
+# ─── dbt Platform ───────────────────────────────────────────────────────────────
 
 variable "dbt_account_id" {
-  description = "dbt Cloud Account ID"
+  description = "dbt Platform Account ID"
   type        = number
 }
 
 variable "dbt_host_url" {
-  description = "dbt Cloud host URL (e.g. https://emea.dbt.com/api)"
+  description = "dbt Platform host URL (e.g. https://emea.dbt.com/api)"
   type        = string
 }
 
 variable "dbt_token" {
-  description = "dbt Cloud Service Token with Account Admin permissions"
+  description = "dbt Platform Service Token with Account Admin permissions"
   type        = string
   sensitive   = true
 }
@@ -19,7 +19,7 @@ variable "dbt_token" {
 # ─── Project ──────────────────────────────────────────────────────────────────
 
 variable "project_name" {
-  description = "Name of the dbt Cloud project"
+  description = "Name of the dbt Platform project"
   type        = string
 }
 

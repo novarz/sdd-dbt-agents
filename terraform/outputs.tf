@@ -17,21 +17,21 @@ output "semantic_layer_enabled" {
 }
 
 output "project_id" {
-  description = "dbt Cloud project ID"
+  description = "dbt Platform project ID"
   value       = dbtcloud_project.this.id
 }
 
 output "production_environment_id" {
-  description = "dbt Cloud Production environment ID"
+  description = "dbt Platform Production environment ID"
   value       = dbtcloud_environment.production.environment_id
 }
 
 output "staging_environment_id" {
-  description = "dbt Cloud Staging environment ID"
+  description = "dbt Platform Staging environment ID"
   value       = dbtcloud_environment.staging.environment_id
 }
 
 output "development_environment_id" {
-  description = "dbt Cloud Development environment ID"
+  description = "dbt Platform Development environment ID"
   value       = dbtcloud_environment.development.environment_id
 }

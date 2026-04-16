@@ -22,7 +22,7 @@ terraform/terraform.tfstate.backup
 terraform/.terraform/
 terraform/.terraform.lock.hcl
 
-# dbt Cloud project config (contains credentials)
+# dbt Platform project config (contains credentials)
 dbt-project.yaml
 
 # OS

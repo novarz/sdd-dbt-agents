@@ -1,5 +1,5 @@
-# ─── dbt Cloud ───────────────────────────────────────────────────────────────
-dbt_account_id = 000                          # REPLACE: your dbt Cloud account ID
+# ─── dbt Platform ───────────────────────────────────────────────────────────────
+dbt_account_id = 000                          # REPLACE: your dbt Platform account ID
 dbt_host_url   = "https://emea.dbt.com/api"  # REPLACE: see docs/regions.md
 
 # ─── Project ─────────────────────────────────────────────────────────────────
