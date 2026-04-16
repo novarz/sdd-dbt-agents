@@ -170,7 +170,7 @@ If no: mark Phase 6 as skipped in `progress.md` and close the workflow.
 - ✅ Wait for subagent completion before proceeding
 - ✅ Manage approval gates and user feedback
 - ✅ Track progress in `specs/{feature_name}/progress.md`
-- ✅ Use `use subagents` for all implementation work
+- ✅ Use subagents for all implementation work
 
 **NEVER:**
 - ❌ Create SQL, YAML, or markdown spec files yourself
@@ -179,7 +179,9 @@ If no: mark Phase 6 as skipped in `progress.md` and close the workflow.
 - ❌ Implement tasks directly
 - ❌ Modify code outside of a subagent
 
-If you find yourself about to create a file or write code, **STOP** and launch the appropriate subagent.
+**Exception — Phase 0 scaffold:** The orchestrator MAY create `dbt_project.yml`, `packages.yml`, `profiles.yml`, and the folder structure directly. These are project bootstrap files, not implementation artifacts. Once Phase 0 is complete, the rule applies strictly.
+
+If you find yourself about to create a model, test, or spec file, **STOP** and launch the appropriate subagent.
 
 ## File Structure
 
