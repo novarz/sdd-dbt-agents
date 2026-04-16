@@ -351,7 +351,9 @@ git diff main...demo/loan-portfolio-risk
 
 ## Teardown / Cleanup
 
-Para desmontar la infraestructura aprovisionada por el framework:
+### Opcion A: Destruir todo (demos, entornos efimeros)
+
+Elimina el proyecto de dbt Platform **y** los datos del warehouse:
 
 ```bash
 # 1. Destruir recursos de dbt Platform (proyecto, entornos, jobs, SL)
@@ -359,16 +361,29 @@ source .env
 cd terraform/{snowflake|bigquery|databricks}
 terraform destroy
 
-# 2. Limpiar datos en el warehouse (opcional — seeds y modelos)
+# 2. Limpiar datos en el warehouse (schemas creados por dbt)
 dbt run-operation drop_schema --args '{schema: dbt_myproject_dev}'
 dbt run-operation drop_schema --args '{schema: dbt_myproject_staging}'
 dbt run-operation drop_schema --args '{schema: dbt_myproject_prod}'
 
 # 3. Limpiar ficheros locales
-rm -r project-config.yaml .env .mcp.json terraform/*/terraform.tfstate*
+rm project-config.yaml .env .mcp.json
 ```
 
-> `terraform destroy` elimina el proyecto de dbt Platform y todos sus recursos, pero NO borra datos del warehouse. Los schemas y tablas creados por dbt persisten hasta que se borren manualmente.
+### Opcion B: Solo dbt Platform (produccion)
+
+Elimina la infraestructura de dbt Platform pero **conserva los datos** del warehouse. Util cuando:
+- Otros equipos consumen las tablas/views directamente
+- Requisitos regulatorios de retencion de datos
+- Migracion a otra herramienta de orquestacion
+
+```bash
+source .env
+cd terraform/{snowflake|bigquery|databricks}
+terraform destroy
+```
+
+> Los schemas y tablas creados por dbt persisten en el warehouse hasta que se borren manualmente. El paso 2 de la Opcion A es siempre opcional e independiente de `terraform destroy`.
 
 ## Recursos
 
