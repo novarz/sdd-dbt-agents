@@ -1,4 +1,15 @@
 terraform {
+  # Uncomment for remote state (recommended for team use):
+  # backend "s3" {
+  #   bucket = "my-terraform-state"
+  #   key    = "dbt-platform/snowflake/terraform.tfstate"
+  #   region = "eu-west-1"
+  # }
+  # backend "gcs" {
+  #   bucket = "my-terraform-state"
+  #   prefix = "dbt-platform/snowflake"
+  # }
+
   required_providers {
     dbtcloud = {
       source  = "dbt-labs/dbtcloud"

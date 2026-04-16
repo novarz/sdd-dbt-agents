@@ -241,6 +241,24 @@ resource "dbtcloud_semantic_layer_configuration" "this" {
   environment_id = dbtcloud_environment.production.environment_id
 }
 
+resource "dbtcloud_databricks_semantic_layer_credential" "this" {
+  count = var.enable_semantic_layer ? 1 : 0
+
+  configuration = {
+    project_id      = dbtcloud_project.this.id
+    name            = "Databricks SL Credential"
+    adapter_version = "databricks_v0"
+  }
+
+  credential = {
+    project_id = dbtcloud_project.this.id
+    adapter_id = dbtcloud_global_connection.databricks.id
+    token      = var.databricks_token
+    schema     = "${var.schema_prefix}_${var.schema_production}"
+    catalog    = var.databricks_catalog
+  }
+}
+
 resource "dbtcloud_service_token" "semantic_layer" {
   name = "${var.project_name}_semantic_layer"
 
@@ -255,4 +273,11 @@ resource "dbtcloud_service_token" "semantic_layer" {
     project_id     = dbtcloud_project.this.id
     all_projects   = false
   }
+}
+
+resource "dbtcloud_semantic_layer_credential_service_token_mapping" "this" {
+  count                        = var.enable_semantic_layer ? 1 : 0
+  project_id                   = dbtcloud_project.this.id
+  semantic_layer_credential_id = dbtcloud_databricks_semantic_layer_credential.this[0].id
+  service_token_id             = dbtcloud_service_token.semantic_layer.id
 }

@@ -237,6 +237,31 @@ resource "dbtcloud_semantic_layer_configuration" "this" {
   environment_id = dbtcloud_environment.production.environment_id
 }
 
+resource "dbtcloud_bigquery_semantic_layer_credential" "this" {
+  count = var.enable_semantic_layer ? 1 : 0
+
+  configuration = {
+    project_id      = dbtcloud_project.this.id
+    name            = "BigQuery SL Credential"
+    adapter_version = "bigquery_v0"
+  }
+
+  credential = {
+    project_id     = dbtcloud_project.this.id
+    num_threads    = 8
+    gcp_project_id = var.gcp_project_id
+    dataset        = "${var.schema_prefix}_${var.schema_production}"
+    private_key_id = var.bigquery_private_key_id
+    private_key    = var.bigquery_private_key
+    client_email   = var.bigquery_client_email
+    client_id      = var.bigquery_client_id
+    auth_uri       = var.bigquery_auth_uri
+    token_uri      = var.bigquery_token_uri
+    auth_provider_x509_cert_url = var.bigquery_auth_provider_x509_cert_url
+    client_x509_cert_url        = var.bigquery_client_x509_cert_url
+  }
+}
+
 resource "dbtcloud_service_token" "semantic_layer" {
   name = "${var.project_name}_semantic_layer"
 
@@ -251,4 +276,11 @@ resource "dbtcloud_service_token" "semantic_layer" {
     project_id     = dbtcloud_project.this.id
     all_projects   = false
   }
+}
+
+resource "dbtcloud_semantic_layer_credential_service_token_mapping" "this" {
+  count                        = var.enable_semantic_layer ? 1 : 0
+  project_id                   = dbtcloud_project.this.id
+  semantic_layer_credential_id = dbtcloud_bigquery_semantic_layer_credential.this[0].id
+  service_token_id             = dbtcloud_service_token.semantic_layer.id
 }

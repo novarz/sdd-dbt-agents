@@ -248,6 +248,37 @@ specs/{feature_name}/
 - All specs in Spanish if user communicates in Spanish
 - Follow dbt Labs naming conventions (stg_, int_, fct_, dim_)
 
+## Model Selection
+
+Agents use different models based on whether the task requires analysis/judgment or execution:
+
+| Agent | Model | Rationale |
+|-------|-------|-----------|
+| spec-analyst | opus | Requires business analysis, ambiguity resolution, structured writing |
+| dbt-architect | opus | Architectural decisions, trade-off analysis, Mesh assessment |
+| dbt-reviewer | opus | Judgment calls on quality, traceability validation |
+| dbt-planner | sonnet | Structured decomposition from clear inputs, speed matters |
+| dbt-developer | sonnet | Code generation from well-defined tasks, high volume |
+| dbt-tester | sonnet | Test generation from clear patterns, high volume |
+| dbt-semantic | sonnet | YAML generation from clear specs |
+| dbt-infra | sonnet | Terraform execution, CLI commands |
+
+Override in `.claude/agents/{agent}.md` frontmatter: `model: opus` or `model: sonnet`.
+
+## Headless / CI Mode
+
+The default workflow requires human approval at each gate. For CI/CD pipelines or automated runs, the user can instruct the orchestrator to skip gates:
+
+> "Corre el flujo completo sin pedirme aprobación en cada fase."
+
+In this mode:
+- All approval gates are skipped — phases execute sequentially without pausing
+- The orchestrator still logs decisions in `progress.md`
+- Phase 5 (review) still runs — if critical issues are found, the workflow stops and reports
+- Phase 6 (deploy) is always gated — infrastructure changes require explicit approval even in headless mode
+
+This is NOT a flag or setting — it's a user instruction that the orchestrator follows for the current session.
+
 ## Quick Start
 
 When user says something like "quiero construir un modelo de..." or "necesito una métrica de...", begin Phase 1 immediately by launching `spec-analyst`.
