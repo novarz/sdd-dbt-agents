@@ -35,6 +35,12 @@ Read `specs/{feature_name}/design.md` section 4 (Source Contracts) for exact sch
 
 ```bash
 source scripts/detect-dbt.sh   # sets $DBT_CMD, $DBT_ENGINE
+
+# Generate profiles.yml if missing
+if [ ! -f profiles.yml ] && [ -f project-config.yaml ]; then
+  ./scripts/generate-profiles.sh
+fi
+
 $DBT_CMD debug                 # verify warehouse connection
 ```
 
