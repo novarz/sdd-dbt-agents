@@ -173,7 +173,8 @@ mkdir -p /path/to/tu-proyecto-dbt/specs/
 ```
 tu-proyecto-dbt/
 ├── CLAUDE.md                          ← Orquestador SDD
-├── .env.example                       ← Plantilla de credenciales (nunca commitear .env)
+├── project-config.example.yaml        ← Config central: warehouse, dbt Platform, schemas, jobs
+├── .env.example                       ← Credenciales sensibles (nunca commitear .env)
 ├── .claude/
 │   └── agents/
 │       ├── spec-analyst.md            ← Fase 1: Requisitos
@@ -292,9 +293,10 @@ Mostrar el review report con:
 Si se quiere mostrar el aprovisionamiento completo:
 
 ```bash
-cp .env.example .env   # rellenar con credenciales dbt Platform + warehouse
+cp project-config.example.yaml project-config.yaml   # rellenar config del proyecto
+cp .env.example .env && chmod 600 .env                # rellenar credenciales sensibles
 source .env
-cd terraform/snowflake && terraform init && terraform apply   # o bigquery/ o databricks/
+# El agente dbt-infra lee project-config.yaml y genera terraform.tfvars automáticamente
 ```
 
 El agente `dbt-infra` provisiona automáticamente via Terraform:
