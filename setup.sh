@@ -90,6 +90,13 @@ fi
 
 echo ""
 
+# ─── Validate config (if filled) ─────────────────────────────────────────────
+if [ -f project-config.yaml ]; then
+  echo "Validating project-config.yaml..."
+  ./scripts/validate-config.sh project-config.yaml || true
+  echo ""
+fi
+
 # ─── Initialize Terraform ────────────────────────────────────────────────────
 if command -v terraform &>/dev/null; then
   echo "To initialize Terraform after filling project-config.yaml:"

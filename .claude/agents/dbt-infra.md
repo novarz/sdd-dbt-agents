@@ -40,6 +40,12 @@ If it doesn't exist, ask the user to copy and fill the template:
 cp project-config.example.yaml project-config.yaml
 ```
 
+**After the file exists and is filled, validate it:**
+```bash
+./scripts/validate-config.sh
+```
+If validation fails, help the user fix the errors before proceeding.
+
 Then help them fill it by reading `specs/{feature_name}/requirements.md` for:
 - **Warehouse platform** (section 6)
 - **Schema prefix** from the deployment strategy section
