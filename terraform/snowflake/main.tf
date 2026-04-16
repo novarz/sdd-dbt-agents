@@ -1,8 +1,12 @@
 # ─── Preflight: validate Snowflake credentials ────────────────────────────────
-# Fails fast before creating any resources if the password is wrong,
-# preventing account lockout from repeated dbt job failures.
+# Validates credentials before creating resources to prevent account lockout
+# from repeated dbt job failures with wrong passwords.
+# Requires snow CLI or snowsql. If neither is available, skips with a warning.
+# Set skip_preflight_validation = true to bypass entirely.
 
 resource "null_resource" "validate_snowflake" {
+  count = var.skip_preflight_validation ? 0 : 1
+
   triggers = {
     snowflake_user    = var.snowflake_user
     snowflake_account = var.snowflake_account
@@ -10,15 +14,31 @@ resource "null_resource" "validate_snowflake" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" -X POST \
-        "https://${var.snowflake_account}.snowflakecomputing.com/session/v1/login-request?warehouse=${var.snowflake_warehouse}&databaseName=${var.snowflake_database}" \
-        -H "Content-Type: application/json" \
-        -d "{\"data\":{\"CLIENT_APP_ID\":\"Terraform\",\"LOGIN_NAME\":\"${var.snowflake_user}\",\"PASSWORD\":\"${var.snowflake_password}\"}}")
-      if [ "$HTTP_CODE" != "200" ]; then
-        echo "ERROR: Snowflake credential validation failed (HTTP $HTTP_CODE). Check snowflake_user and snowflake_password before applying."
-        exit 1
+      if command -v snow &>/dev/null; then
+        echo "Validating Snowflake credentials via snow CLI..."
+        snow connection test \
+          --account "${var.snowflake_account}" \
+          --user "${var.snowflake_user}" \
+          --password "${var.snowflake_password}" \
+          --warehouse "${var.snowflake_warehouse}" \
+          --database "${var.snowflake_database}" \
+          2>&1 || { echo "ERROR: Snowflake credential validation failed. Check snowflake_user and snowflake_password."; exit 1; }
+      elif command -v snowsql &>/dev/null; then
+        echo "Validating Snowflake credentials via snowsql..."
+        snowsql \
+          -a "${var.snowflake_account}" \
+          -u "${var.snowflake_user}" \
+          --password "${var.snowflake_password}" \
+          -w "${var.snowflake_warehouse}" \
+          -d "${var.snowflake_database}" \
+          -q "SELECT 1" \
+          2>&1 || { echo "ERROR: Snowflake credential validation failed. Check snowflake_user and snowflake_password."; exit 1; }
+      else
+        echo "WARNING: Neither 'snow' nor 'snowsql' CLI found. Skipping credential validation."
+        echo "Install: brew install snowflake-cli  OR  brew install --cask snowflake-snowsql"
+        echo "Without validation, wrong credentials may cause account lockout."
       fi
-      echo "Snowflake credentials validated OK."
+      echo "Preflight check complete."
     EOT
   }
 }

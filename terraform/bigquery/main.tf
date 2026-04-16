@@ -26,10 +26,37 @@ locals {
   )
 }
 
+# ─── Preflight: validate BigQuery credentials ────────────────────────────────
+# Verifies the service account can access the GCP project.
+# Requires bq CLI (part of gcloud SDK). If not available, skips with a warning.
+
+resource "null_resource" "validate_bigquery" {
+  count = var.skip_preflight_validation ? 0 : 1
+
+  triggers = {
+    gcp_project_id = var.gcp_project_id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      if command -v bq &>/dev/null; then
+        echo "Validating BigQuery credentials via bq CLI..."
+        bq ls --project_id="${var.gcp_project_id}" --max_results=1 2>&1 \
+          || { echo "ERROR: BigQuery credential validation failed. Check GCP service account permissions."; exit 1; }
+      else
+        echo "WARNING: 'bq' CLI not found. Skipping credential validation."
+        echo "Install: https://cloud.google.com/sdk/docs/install"
+      fi
+      echo "Preflight check complete."
+    EOT
+  }
+}
+
 # ─── Project ──────────────────────────────────────────────────────────────────
 
 resource "dbtcloud_project" "this" {
-  name = var.project_name
+  name       = var.project_name
+  depends_on = [null_resource.validate_bigquery]
 }
 
 # ─── Repository ───────────────────────────────────────────────────────────────

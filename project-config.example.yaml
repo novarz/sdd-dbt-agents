@@ -56,6 +56,15 @@ schemas:
 jobs:
   daily_schedule_hours: [6]      # UTC hours for the daily build
 
+# ─── Preflight ───────────────────────────────────────────────────────────────
+# Validates warehouse credentials before creating resources.
+# Snowflake: uses snow/snowsql CLI (prevents account lockout)
+# BigQuery: uses bq CLI
+# Databricks: uses curl
+# Set to true to skip if CLI is unavailable or validation fails for network reasons.
+preflight:
+  skip_validation: false
+
 # ─── MCP Server (auto-generated after deploy) ────────────────────────────────
 # After Phase 6, the dbt-infra agent generates .mcp.json from terraform outputs.
 # Set to true to enable automatic generation.
