@@ -281,3 +281,33 @@ resource "dbtcloud_semantic_layer_credential_service_token_mapping" "this" {
   semantic_layer_credential_id = dbtcloud_databricks_semantic_layer_credential.this[0].id
   service_token_id             = dbtcloud_service_token.semantic_layer.id
 }
+
+# ─── MCP Service Token ───────────────────────────────────────────────────────
+
+resource "dbtcloud_service_token" "mcp" {
+  name = "${var.project_name}_mcp"
+
+  service_token_permissions {
+    permission_set = "metadata_only"
+    project_id     = dbtcloud_project.this.id
+    all_projects   = false
+  }
+
+  service_token_permissions {
+    permission_set = "semantic_layer_only"
+    project_id     = dbtcloud_project.this.id
+    all_projects   = false
+  }
+
+  service_token_permissions {
+    permission_set = "job_admin"
+    project_id     = dbtcloud_project.this.id
+    all_projects   = false
+  }
+
+  service_token_permissions {
+    permission_set = "developer"
+    project_id     = dbtcloud_project.this.id
+    all_projects   = false
+  }
+}
