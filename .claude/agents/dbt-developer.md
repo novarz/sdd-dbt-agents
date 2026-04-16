@@ -55,6 +55,12 @@ Follow the existing style of the project (medallion, stage/intermediate/mart, et
 - Use CTEs exclusively, never subqueries
 - Final CTE named `final` → `select * from final`
 - No hardcoded schema/database — use `{{ source() }}` and `{{ ref() }}`
+- Source YAML must use dbt vars for database/schema (never hardcode):
+  ```yaml
+  database: "{{ var('source_database') }}"
+  schema: "{{ var('source_schema_prefix') }}_{source_name}"
+  ```
+  Read values from `project-config.yaml` → `sources` section
 - No `select *` except from CTEs within the same model
 - Insert `--limit` into CTEs when exploring large datasets
 - Use deferral (`--defer --state path/to/prod/artifacts`) when available
