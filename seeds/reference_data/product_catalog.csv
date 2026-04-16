@@ -1,5 +1,0 @@
-product_type,product_name,product_category,max_ltv,min_interest_rate,max_term_months
-mortgage,Hipoteca Residencial,secured,0.80,0.0195,360
-consumer,Prestamo Personal,unsecured,0.00,0.0650,84
-business,Financiacion PYME,secured,0.70,0.0350,120
-credit_line,Linea de Credito,unsecured,0.00,0.0490,60
