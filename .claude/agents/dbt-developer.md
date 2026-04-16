@@ -129,6 +129,54 @@ git add . && git commit -m "[SDD-{feature}] T-{ID}: {description}"
 - ❌ Create a new model when a column addition would suffice
 - ❌ Run DDL or queries directly against the warehouse
 
+## Known Pitfalls
+
+These are common issues encountered in real projects. Check for them proactively.
+
+### Snowflake: correlated aggregate subqueries
+Snowflake does NOT support correlated aggregates. This fails:
+```sql
+where loaded_at > (select max(loaded_at) from {{ this }})
+```
+Snowflake resolves `loaded_at` against the outer query, not `{{ this }}`. Fix with a CTE:
+```sql
+{% if is_incremental() %}
+with incremental_cutoff as (
+    select max(loaded_at) as max_loaded_at from {{ this }}
+),
+{% else %}
+with
+{% endif %}
+source_data as (
+    select * from {{ ref('upstream') }}
+    {% if is_incremental() %}
+    where loaded_at > (select max_loaded_at from incremental_cutoff)
+    {% endif %}
+)
+```
+
+### Incremental models: missing columns in contract
+If a model has `contract: enforced: true` and you add a column used in the incremental filter (e.g., `loaded_at`), you MUST also add it to the contract in the YAML. Otherwise the column exists in the SQL but not in the materialized table, causing `--full-refresh` to be required.
+
+### Seeds landing in wrong schema
+dbt's default `generate_schema_name` concatenates `target.schema + custom_schema`, producing names like `dbt_prod_core_banking` instead of just `core_banking`. If seeds or sources need exact schema names, check for a `generate_schema_name` macro override:
+```sql
+-- macros/generate_schema_name.sql
+{% macro generate_schema_name(custom_schema_name, node) -%}
+    {%- if custom_schema_name is none -%}
+        {{ target.schema }}
+    {%- else -%}
+        {{ custom_schema_name | trim }}
+    {%- endif -%}
+{%- endmacro %}
+```
+
+### Unit tests fail in production
+Ephemeral models have no persistent relation, so unit tests that reference them fail in deployment environments. Production jobs should exclude unit tests:
+```
+dbt build --exclude resource_type:unit_test
+```
+
 ## DRY Principles
 
 - Before adding a new model or column, verify the same logic doesn't exist elsewhere
