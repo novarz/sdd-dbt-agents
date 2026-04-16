@@ -113,6 +113,14 @@ variable "schema_production" {
   default     = "prod"
 }
 
+# ─── Preflight ────────────────────────────────────────────────────────────────
+
+variable "skip_preflight_validation" {
+  description = "Skip credential validation before applying. Use if snow/snowsql is not available or validation fails for network reasons."
+  type        = bool
+  default     = false
+}
+
 # ─── Semantic Layer ───────────────────────────────────────────────────────────
 
 variable "enable_semantic_layer" {

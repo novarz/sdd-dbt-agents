@@ -26,10 +26,41 @@ locals {
   )
 }
 
+# ─── Preflight: validate Databricks credentials ──────────────────────────────
+# Verifies the PAT token can reach the Databricks workspace.
+# Uses curl (always available). No lockout risk with PAT tokens.
+
+resource "null_resource" "validate_databricks" {
+  count = var.skip_preflight_validation ? 0 : 1
+
+  triggers = {
+    databricks_host = var.databricks_host
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Validating Databricks credentials..."
+      HTTP_CODE=$(curl -s -o /dev/null -w "%%{http_code}" \
+        -H "Authorization: Bearer ${var.databricks_token}" \
+        "${var.databricks_host}/api/2.0/clusters/list")
+      if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+        echo "ERROR: Databricks credential validation failed (HTTP $HTTP_CODE). Check databricks_token."
+        exit 1
+      elif [ "$HTTP_CODE" != "200" ]; then
+        echo "WARNING: Databricks returned HTTP $HTTP_CODE. This may be a network issue — proceeding."
+      else
+        echo "Databricks credentials validated OK."
+      fi
+      echo "Preflight check complete."
+    EOT
+  }
+}
+
 # ─── Project ──────────────────────────────────────────────────────────────────
 
 resource "dbtcloud_project" "this" {
-  name = var.project_name
+  name       = var.project_name
+  depends_on = [null_resource.validate_databricks]
 }
 
 # ─── Repository ───────────────────────────────────────────────────────────────

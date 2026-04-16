@@ -149,6 +149,14 @@ variable "schema_production" {
   default     = "prod"
 }
 
+# ─── Preflight ────────────────────────────────────────────────────────────────
+
+variable "skip_preflight_validation" {
+  description = "Skip credential validation before applying. Use if bq CLI is not available."
+  type        = bool
+  default     = false
+}
+
 # ─── Semantic Layer ───────────────────────────────────────────────────────────
 
 variable "enable_semantic_layer" {
