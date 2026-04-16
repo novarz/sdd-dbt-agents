@@ -1,0 +1,104 @@
+# CI: Validate SDD framework integrity
+# To activate: copy this file to .github/workflows/validate.yml
+# Or run ./setup.sh and answer "y" when prompted about CI.
+#
+# What it checks:
+# - Terraform syntax is valid for all 3 warehouses
+# - All agents referenced in CLAUDE.md exist as files
+# - validate-config.sh has no syntax errors
+# - No placeholder values leaked into tracked files
+
+name: Validate Framework
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        warehouse: [snowflake, bigquery, databricks]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9"
+
+      - name: Terraform init & validate (${{ matrix.warehouse }})
+        working-directory: terraform/${{ matrix.warehouse }}
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+  agent-consistency:
+    name: Agent Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check agents referenced in CLAUDE.md exist
+        run: |
+          ERRORS=0
+
+          # Extract agent names from CLAUDE.md (lines like "launch `dbt-developer`" or "`spec-analyst`")
+          REFERENCED=$(grep -oE '`(dbt-[a-z-]+|spec-analyst)`' CLAUDE.md | tr -d '`' | sort -u)
+
+          for agent in $REFERENCED; do
+            if [ ! -f ".claude/agents/${agent}.md" ]; then
+              echo "ERROR: CLAUDE.md references agent '$agent' but .claude/agents/${agent}.md does not exist"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+
+          # Check all agent files are referenced in CLAUDE.md
+          for file in .claude/agents/*.md; do
+            agent=$(basename "$file" .md)
+            if ! grep -q "$agent" CLAUDE.md; then
+              echo "WARNING: .claude/agents/${agent}.md exists but is not referenced in CLAUDE.md"
+            fi
+          done
+
+          if [ $ERRORS -gt 0 ]; then
+            echo "FAILED: $ERRORS missing agent file(s)"
+            exit 1
+          fi
+          echo "OK: All referenced agents exist"
+
+  scripts-check:
+    name: Scripts Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check bash scripts syntax
+        run: |
+          for script in setup.sh scripts/*.sh; do
+            if [ -f "$script" ]; then
+              bash -n "$script" && echo "OK: $script" || { echo "FAILED: $script"; exit 1; }
+            fi
+          done
+
+  no-placeholders:
+    name: No Leaked Placeholders
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tracked files for leaked credentials or placeholders
+        run: |
+          # Only check tracked files, exclude examples and templates
+          FOUND=$(git ls-files | grep -v '.example' | grep -v '.template' | grep -v 'ci/' | \
+            xargs grep -lE '(dbtc_[A-Za-z0-9]{20,}|MY_PASSWORD|MY_SECRET)' 2>/dev/null || true)
+
+          if [ -n "$FOUND" ]; then
+            echo "ERROR: Possible leaked credentials in tracked files:"
+            echo "$FOUND"
+            exit 1
+          fi
+          echo "OK: No leaked placeholders found"
