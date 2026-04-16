@@ -74,7 +74,8 @@ enriched as (
         case
             when days_past_due > 0 then true
             else false
-        end as is_overdue
+        end as is_overdue,
+        loaded_at
 
     from valid_payments
 
