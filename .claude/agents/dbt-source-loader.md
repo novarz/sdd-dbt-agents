@@ -34,17 +34,23 @@ Read `specs/{feature_name}/design.md` section 4 (Source Contracts) for exact sch
 ### Step 2 — Check what exists
 
 ```bash
-dbt debug  # verify warehouse connection
+source scripts/detect-dbt.sh   # sets $DBT_CMD, $DBT_ENGINE
+$DBT_CMD debug                 # verify warehouse connection
 ```
 
 If connected, check which tables already exist:
 ```bash
-dbt show --inline "
+$DBT_CMD show --inline "
   select table_schema, table_name
   from information_schema.tables
   where table_schema in ('{expected_schemas}')
   order by table_schema, table_name
 "
+```
+
+**With dbt Fusion** — you can also use `dbt pull` to download source data locally for inspection:
+```bash
+$DBT_CMD pull -s source:{source_name}   # downloads data from warehouse
 ```
 
 ### Step 3 — Create seeds (if data strategy = seeds)

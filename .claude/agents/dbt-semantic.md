@@ -38,9 +38,19 @@ This agent complements two dbt agent skills:
 
 5. **Validate:**
    ```bash
-   dbt parse  # Check YAML syntax and refs
-   # If MetricFlow CLI available:
-   mf validate-configs
+   source scripts/detect-dbt.sh
+   ```
+
+   **With dbt Fusion** (`$DBT_ENGINE = fusion`):
+   ```bash
+   $DBT_CMD sl validate    # Built-in Semantic Layer validation
+   $DBT_CMD sl list        # Verify metrics are discoverable
+   ```
+
+   **With dbt Core / Cloud CLI:**
+   ```bash
+   $DBT_CMD parse          # Check YAML syntax and refs
+   mf validate-configs     # If MetricFlow CLI available
    ```
 
 6. **Commit:** `git add . && git commit -m "[SDD-{feature}] T-{ID}: {description}"`

@@ -28,17 +28,37 @@ This agent complements three dbt agent skills:
    - `specs/{feature_name}/design.md`
    - `specs/{feature_name}/tasks.md`
 
-2. **Run automated checks (read-only — never materialize):**
+2. **Detect dbt engine and run automated checks (read-only — never materialize):**
    ```bash
-   dbt parse            # Validate YAML, Jinja syntax, and refs
-   dbt compile          # Verify SQL compiles correctly against all models
-   dbt docs generate    # Documentation completeness
+   source scripts/detect-dbt.sh   # sets $DBT_CMD, $DBT_ENGINE
+   ```
+
+   **With dbt Fusion** (`$DBT_ENGINE = fusion`):
+   ```bash
+   $DBT_CMD build --compute inline    # Full validation without touching warehouse
+   $DBT_CMD docs generate
+   ```
+   Inline compute validates SQL, refs, types, and contracts — all without materializing.
+
+   **With dbt Core / Cloud CLI:**
+   ```bash
+   $DBT_CMD parse            # Validate YAML, Jinja syntax, and refs
+   $DBT_CMD compile          # Verify SQL compiles correctly against all models
+   $DBT_CMD docs generate    # Documentation completeness
    ```
 
 3. **If semantic layer was implemented, validate queryability:**
+
+   **With dbt Fusion:**
    ```bash
-   # Verify metrics are queryable (if MCP or mf CLI available)
-   dbt parse  # At minimum: check YAML validity
+   $DBT_CMD sl validate       # Built-in SL validation
+   $DBT_CMD sl list           # List all metrics
+   ```
+
+   **With dbt Core / Cloud CLI:**
+   ```bash
+   $DBT_CMD parse  # At minimum: check YAML validity
+   # Use MCP or mf CLI if available for deeper validation
    ```
 
 4. **Review against 7 dimensions** (see below)

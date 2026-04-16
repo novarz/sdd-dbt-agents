@@ -51,16 +51,28 @@ This gives agents your actual table names, column types, lineage graph, and tran
 
 **Trigger:** Before launching any subagent, always run this check.
 
-1. Check if a dbt project exists:
+1. **Detect dbt CLI** — determines which engine is available and its capabilities:
+   ```bash
+   source scripts/detect-dbt.sh
+   ```
+   This sets `$DBT_CMD` (the command to use), `$DBT_ENGINE` (fusion / cloud-cli / core), and capability flags. All subsequent `dbt` commands in this session should use `$DBT_CMD` instead of `dbt`.
+
+   | Engine | `$DBT_CMD` | Capabilities |
+   |--------|-----------|-------------|
+   | dbt Fusion | `dbtf` | `dbt sl` built-in, `--compute inline` (no warehouse), `dbt pull` |
+   | dbt Cloud CLI | `dbt` | Deferral to cloud artifacts, `dbt environment` |
+   | dbt Core | `dbt` | Standard CLI |
+
+2. Check if a dbt project exists:
    ```bash
    ls dbt_project.yml
    ```
-2. **If no `dbt_project.yml`:** ask the user which warehouse they're targeting (BigQuery, Snowflake, Databricks, Redshift, DuckDB). Then create the scaffold: `dbt_project.yml`, `packages.yml`, `profiles.yml`, folder structure. Use **DuckDB as default** for local dev if the user has no preference.
-3. Check if `packages.yml` exists — if not, create it with `dbt-labs/dbt_utils` at minimum.
-4. Run `dbt deps` to install packages.
-5. Only proceed to Phase 1 once the project compiles with `dbt parse`.
+3. **If no `dbt_project.yml`:** ask the user which warehouse they're targeting (BigQuery, Snowflake, Databricks, Redshift, DuckDB). Then create the scaffold: `dbt_project.yml`, `packages.yml`, `profiles.yml`, folder structure. Use **DuckDB as default** for local dev if the user has no preference.
+4. Check if `packages.yml` exists — if not, create it with `dbt-labs/dbt_utils` at minimum.
+5. Run `$DBT_CMD deps` to install packages.
+6. Only proceed to Phase 1 once the project compiles with `$DBT_CMD parse`.
 
-> This phase is skipped if `dbt_project.yml` already exists and `dbt parse` passes.
+> This phase is skipped if `dbt_project.yml` already exists and `$DBT_CMD parse` passes.
 
 ### Phase 1: Requirements (spec-analyst)
 

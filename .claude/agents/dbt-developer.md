@@ -78,26 +78,35 @@ YAML must include:
 
 ### Step 4: BUILD — adapt to available environment
 
-First, check whether a warehouse connection is available:
+First, detect the dbt engine and check warehouse connection:
 
 ```bash
-dbt debug
+source scripts/detect-dbt.sh   # sets $DBT_CMD, $DBT_ENGINE, capability flags
+$DBT_CMD debug
 ```
 
-**If connection is available** (`dbt debug` passes):
+**If connection is available** (`$DBT_CMD debug` passes):
 ```bash
-dbt build -s {model_name}
+$DBT_CMD build -s {model_name}
 ```
 If build fails 3 times, **STOP** and report the error with the exact message.
 
-**If no connection is available** (`dbt debug` fails or no `profiles.yml` found):
-1. Run `dbt parse` to validate YAML and Jinja syntax:
+**If no connection is available** (`$DBT_CMD debug` fails or no `profiles.yml` found):
+
+**With dbt Fusion** (`$DBT_ENGINE = fusion`):
+```bash
+$DBT_CMD build -s {model_name} --compute inline
+```
+Fusion's inline compute validates SQL, refs, and types without a warehouse connection.
+
+**With dbt Core / Cloud CLI:**
+1. Run `$DBT_CMD parse` to validate YAML and Jinja syntax:
    ```bash
-   dbt parse
+   $DBT_CMD parse
    ```
-2. Run `dbt compile -s {model_name}` to verify the SQL compiles correctly:
+2. Run `$DBT_CMD compile -s {model_name}` to verify the SQL compiles correctly:
    ```bash
-   dbt compile -s {model_name}
+   $DBT_CMD compile -s {model_name}
    ```
 3. Ask the user:
    > "No hay conexión a warehouse configurada. He validado los modelos con `dbt parse` y `dbt compile`. ¿Quieres conectarte a un warehouse para ejecutar `dbt build`? Si es así, indícame el tipo (BigQuery, Snowflake, Databricks, DuckDB, Redshift) y las credenciales necesarias."

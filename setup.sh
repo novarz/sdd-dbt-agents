@@ -15,10 +15,12 @@ else
   echo "  claude:    $(claude --version 2>/dev/null | head -1)"
 fi
 
-if ! command -v dbt &>/dev/null; then
-  MISSING+=("dbt (dbt Core or dbt Platform CLI): https://docs.getdbt.com/docs/core/installation")
-else
+if command -v dbtf &>/dev/null || command -v dbt-fusion &>/dev/null; then
+  echo "  dbt:       $(dbtf --version 2>/dev/null || dbt-fusion --version 2>/dev/null) (Fusion)"
+elif command -v dbt &>/dev/null; then
   echo "  dbt:       $(dbt --version 2>/dev/null | head -1)"
+else
+  MISSING+=("dbt CLI: https://docs.getdbt.com/docs/core/installation")
 fi
 
 if ! command -v terraform &>/dev/null; then
