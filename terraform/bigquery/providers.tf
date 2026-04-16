@@ -4,10 +4,6 @@ terraform {
       source  = "dbt-labs/dbtcloud"
       version = "~> 1.8.2"
     }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.0"
-    }
   }
 }
 
