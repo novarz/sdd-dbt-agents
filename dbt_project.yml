@@ -17,11 +17,12 @@ clean-targets:
 vars:
   loan_portfolio_risk:
     active_loan_statuses: ['active', 'restructured']
-    # Source location — shared across all environments for demo projects.
-    # Seeds and sources both resolve to the same schemas.
-    # For real projects, override per environment via dbt Platform env vars.
-    source_database: "ANALYTICS"
-    source_schema_prefix: "dbt_sduran"
+    # Source location — uses env_var() so dbt Platform can override per environment.
+    # Fallback values match the seed schemas for local/demo development.
+    # For real projects, set DBT_SOURCE_DATABASE and DBT_SOURCE_SCHEMA_PREFIX
+    # per environment in dbt Platform (managed by Terraform).
+    source_database: "{{ env_var('DBT_SOURCE_DATABASE', 'ANALYTICS') }}"
+    source_schema_prefix: "{{ env_var('DBT_SOURCE_SCHEMA_PREFIX', 'dbt_sduran') }}"
 
 models:
   loan_portfolio_risk:
