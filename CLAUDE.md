@@ -425,8 +425,45 @@ Templates should be **warehouse-agnostic** — no hardcoded Snowflake/BigQuery r
 
 ## Quick Start
 
-When user says something like "quiero construir un modelo de..." or "necesito una métrica de...", begin Phase 1 immediately by launching `spec-analyst`.
+When a user starts a conversation, determine which path to follow:
 
-When user says something like "quiero la demo de..." or "monta el template de...", check `specs/templates/` and follow the Demo Catalog workflow above.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ¿Qué quieres hacer?                          │
+├─────────────┬─────────────────┬──────────────┬─────────────────┤
+│  A) Nuevo   │ B) Existente    │ C) Demo      │ D) Auditar      │
+│  proyecto   │ añadir feature  │              │                 │
+├─────────────┼─────────────────┼──────────────┼─────────────────┤
+│ Phase 0     │ Phase 0b        │ Copy template│ Phase 0b        │
+│ (scaffold)  │ (inspector)     │ from catalog │ (inspector)     │
+│      ↓      │      ↓          │      ↓       │      ↓          │
+│ Phase 1     │ project-profile │ Skip to      │ project-profile │
+│ (spec)      │      ↓          │ Phase 2/3/4  │      ↓          │
+│      ↓      │ Terraform import│      ↓       │ Recommendations │
+│ Phase 2-6   │ (if on Platform)│ Phase 2-6    │ (done)          │
+│             │      ↓          │              │                 │
+│             │ Phase 1 → 2-6   │              │                 │
+│             │ (new feature)   │              │                 │
+└─────────────┴─────────────────┴──────────────┴─────────────────┘
+```
 
-When user says something like "revisa el proyecto", "hazme un audit", "quiero hacer onboarding", or "entiende el proyecto antes de...", launch `dbt-inspector` (Phase 0b).
+### Route detection
+
+| User says... | Route | Action |
+|-------------|-------|--------|
+| "quiero construir un modelo de..." / "necesito una métrica de..." | A | Phase 0 → Phase 1 |
+| "quiero añadir X a mi proyecto" / "tengo un proyecto dbt y quiero..." | B | Phase 0b → import → Phase 1 |
+| "quiero la demo de..." / "monta el template de..." | C | Demo Catalog |
+| "revisa el proyecto" / "hazme un audit" / "health check" | D | Phase 0b (standalone) |
+
+### If unsure, ask:
+
+> ¿Es un proyecto nuevo desde cero, o ya tienes un proyecto dbt existente?
+> Si ya existe, ¿está desplegado en dbt Platform?
+
+This determines:
+- **New + no Platform** → Phase 0 scaffold → full SDD workflow
+- **New + deploy to Platform** → Phase 0 scaffold → full SDD workflow → Phase 6
+- **Existing + on Platform** → Phase 0b inspector with MCP + Terraform import → new features
+- **Existing + local only** → Phase 0b inspector (file-only) → new features
+- **Demo** → template catalog → skip to implementation
