@@ -135,6 +135,31 @@ MUST have `freshness` and `loaded_at_field` configured. Missing freshness on cri
 sources (e.g., transactional tables) is a **CRITICAL** finding, not an observation.
 This prevents stale data from silently propagating through the DAG.
 
+### 5b. Data Classification & PII
+
+Reference: `docs/data-classification.md`
+
+**Automated checks:**
+- [ ] Every mart column has `meta.classification` (`pii` | `confidential` | `internal` | `public`)
+- [ ] Columns matching PII patterns (email, phone, dni, iban, name, address) are classified as `pii`
+- [ ] PII columns have `meta.pii_type` and `meta.masking_required: true`
+- [ ] No PII columns are exposed in public marts without masking strategy documented
+
+**Pattern scan:** For each mart column, check the column name against the PII patterns
+in `docs/data-classification.md`. If a column matches a PII pattern but is NOT classified
+as `pii`, this is a **CRITICAL** finding.
+
+**Classification coverage table:**
+
+| Model | Total Columns | Classified | PII | Confidential | Unclassified |
+|-------|--------------|------------|-----|--------------|--------------|
+| fct_X | 15 | 15 | 0 | 3 | 0 ✅ |
+| dim_Y | 12 | 10 | 2 | 1 | 2 ❌ |
+
+**Missing classification on a mart column is CRITICAL** — it means no one has assessed
+whether the data is sensitive. In regulated industries (banking, insurance, healthcare),
+this is a compliance risk.
+
 ### 6. Documentación
 
 - [ ] Every model has a `description`

@@ -72,6 +72,10 @@ Follow the existing style of the project (medallion, stage/intermediate/mart, et
 YAML must include:
 - `description` for every model and every column in marts
 - `data_type` and `constraints` for contracted models
+- `meta.classification` for every column in marts (`pii` | `confidential` | `internal` | `public`)
+  - If `classification: "pii"`, also add `pii_type` and `masking_required: true`
+  - Refer to `docs/data-classification.md` for patterns and rules
+  - Copy classifications from `design.md` Data Classification Summary when available
 - `tests` for PKs (`not_null` + `unique`) and FKs (`relationships`) — **these are part of the model definition, not a separate testing task**
 
 > Generic tests for business-logic enums (`accepted_values`), custom data quality checks, and unit tests are the responsibility of the `dbt-tester` agent.

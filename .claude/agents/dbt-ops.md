@@ -167,6 +167,21 @@ Report:
 - Jobs that haven't run in >48h (schedule may be broken)
 - CI job success rate (last 10 runs)
 
+#### Step 4b — Data classification check
+
+For each mart model, read the YAML schema and check:
+- Does every column have `meta.classification`?
+- Do columns matching PII patterns (see `docs/data-classification.md`) have `classification: "pii"`?
+- Are PII columns in models with `access: public` flagged as **CRITICAL**?
+
+This is a compliance check — in regulated industries, unclassified data is a risk.
+
+```bash
+# Scan mart YAMLs for columns without meta.classification
+grep -r "name:" models/marts/ --include="*.yml" | head -20
+# Cross-reference with PII patterns from docs/data-classification.md
+```
+
 #### Step 5 — Generate health report
 
 Write to `specs/ops/health-report-{date}.md`:
@@ -222,6 +237,9 @@ Each story is a standalone file that can be fed to Phase 1 (spec-analyst) to sta
 | Source Y has no freshness configured | "Añadir freshness checks a source {source}: configurar loaded_at_field y thresholds" |
 | 3 models share the same CTE logic | "Extraer lógica compartida de {models} a modelo intermedio o macro" |
 | Test coverage below 80% on marts | "Aumentar cobertura de tests en marts: añadir not_null, unique, relationships" |
+| Mart columns without meta.classification | "Clasificar datos sensibles en {mart}: añadir meta.classification a todas las columnas (compliance)" |
+| PII columns without masking_required | "Aplicar masking a columnas PII en {mart}: configurar warehouse masking policies" |
+| PII column exposed in public access model | "**CRITICAL**: {model}.{column} es PII con access: public — restringir acceso o aplicar masking" |
 | No Semantic Layer metrics for mart Z | "Crear métricas de Semantic Layer para {mart}: identificar measures y dimensions clave" |
 | Job failures >2x/week on same model | "Investigar inestabilidad de {model}: analizar root cause de fallos recurrentes" |
 | Mart without contract enforced | "Añadir contract: enforced a {mart} con data_types y constraints" |
