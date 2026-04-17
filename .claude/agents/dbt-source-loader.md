@@ -150,13 +150,42 @@ This way, environments can override source locations via `--vars` or environment
 
 ```bash
 # Load seeds
-dbt seed
+$DBT_CMD seed
 
 # Verify all sources are available
-dbt show -s source:{source_name}.{table_name} --limit 5
+$DBT_CMD show -s source:{source_name}.{table_name} --limit 5
 ```
 
 If any source fails, report which tables are missing and what the user needs to do.
+
+### Step 6b — Source accessibility check
+
+After loading seeds (or when data strategy = external load), verify that **every** source
+defined in the YAML is actually queryable. This catches misconfigurations before they
+reach production.
+
+```bash
+# For each source table, run a simple row count
+for src in {list_of_source_refs}; do
+  echo "Checking $src..."
+  $DBT_CMD show --inline "select count(*) as row_count from {{ source('${source_name}', '${table_name}') }}" --limit 1 2>&1
+  if [ $? -ne 0 ]; then
+    echo "FAILED: $src is not accessible"
+  fi
+done
+```
+
+**With dbt Fusion**, you can also validate without hitting the warehouse:
+```bash
+$DBT_CMD build --compute inline -s source:{source_name}+
+```
+
+**If any source is inaccessible:**
+1. Check the schema name — does it match what's in the warehouse?
+2. Check permissions — does the dbt role have `SELECT` on that schema?
+3. If using seeds — did `dbt seed` complete without errors?
+4. Report the exact error and inaccessible sources to the orchestrator. Do NOT proceed
+   with implementation if sources are broken — downstream models will all fail.
 
 ### Step 7 — Commit
 

@@ -91,6 +91,19 @@ Output a traceability matrix:
 - [ ] No hardcoded schema/database references in SQL
 - [ ] CTEs used (no subqueries), with `final` as last CTE
 
+### 2b. Source Schema Governance
+
+- [ ] Source YAML uses `{{ var('source_database') }}` — never a hardcoded database name
+- [ ] Source YAML uses `{{ var('source_schema_prefix') }}_{source_name}` — never a hardcoded schema
+- [ ] `dbt_project.yml` defines `vars.source_database` and `vars.source_schema_prefix`
+- [ ] Seed schemas in `dbt_project.yml` use the same vars pattern
+- [ ] No dev-personal schemas (e.g., `dbt_username_*`) appear in source YAML or dbt_project.yml
+
+**Why this matters:** Hardcoded schemas cause sources to point to dev schemas in production.
+When sources reference `dbt_sduran_core_banking` instead of using vars, production jobs
+read from a developer's personal schema — not the real data. This is a **CRITICAL** finding
+because it silently serves stale or test data in production.
+
 ### 3. Contratos y Governance (from dbt Mesh skill)
 
 - [ ] All marts models have `contract: enforced: true`

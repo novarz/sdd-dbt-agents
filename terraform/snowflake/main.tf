@@ -249,11 +249,22 @@ resource "dbtcloud_job" "slim_ci" {
 # Step 1: terraform apply (enable_semantic_layer = false, default)
 # Step 2: trigger and wait for a successful production job run
 # Step 3: terraform apply -var="enable_semantic_layer=true"
+#
+# KNOWN ISSUE (dbtcloud provider ~1.8.2): dbtcloud_semantic_layer_configuration
+# creates successfully but returns "not found" on subsequent refresh, causing
+# Terraform to want to recreate it every apply. The SL credential and service
+# token mappings work correctly regardless. We use lifecycle ignore_changes
+# to prevent the perpetual recreate cycle. If the provider fixes this in a
+# future version, remove the lifecycle block.
 
 resource "dbtcloud_semantic_layer_configuration" "this" {
   count          = var.enable_semantic_layer ? 1 : 0
   project_id     = dbtcloud_project.this.id
   environment_id = dbtcloud_environment.production.environment_id
+
+  lifecycle {
+    ignore_changes = [project_id, environment_id]
+  }
 }
 
 resource "dbtcloud_snowflake_semantic_layer_credential" "this" {
