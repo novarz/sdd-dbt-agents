@@ -199,12 +199,26 @@ Check `project-config.yaml` → `mcp.auto_generate`. If `true`, configure `.mcp.
    echo 'export DBT_MCP_TOKEN="'"$MCP_TOKEN"'"' >> ../../.env
    ```
 
-3. Read `dbt_platform.host_url` from `project-config.yaml` and strip `/api`:
+3. Parse `dbt_platform.host_url` from `project-config.yaml` to extract MCP env vars.
+
+   **Multi-cell accounts** (most common): the host URL has an account prefix like `pk455.eu1.dbt.com/api`.
+   Split it into `DBT_HOST` (region only) and `MULTICELL_ACCOUNT_PREFIX`:
    ```
-   https://pk455.eu1.dbt.com/api → https://pk455.eu1.dbt.com
+   https://pk455.eu1.dbt.com/api → DBT_HOST=eu1.dbt.com, MULTICELL_ACCOUNT_PREFIX=pk455
    ```
 
+   **Single-cell accounts**: the host URL has no prefix, e.g. `cloud.getdbt.com/api`.
+   Use the hostname directly:
+   ```
+   https://cloud.getdbt.com/api → DBT_HOST=cloud.getdbt.com (no MULTICELL_ACCOUNT_PREFIX)
+   ```
+
+   **Detection rule**: if the hostname has 3+ dot-separated segments before the TLD
+   (e.g., `pk455.eu1.dbt.com`), the first segment is the account prefix.
+
 4. Write `.mcp.json` (gitignored). The token is referenced via env var — not hardcoded:
+
+   **Multi-cell example:**
    ```json
    {
      "mcpServers": {
@@ -212,9 +226,27 @@ Check `project-config.yaml` → `mcp.auto_generate`. If `true`, configure `.mcp.
          "command": "uvx",
          "args": ["dbt-mcp"],
          "env": {
-           "DBT_HOST": "{host_url_without_api}",
+           "DBT_HOST": "{region}.dbt.com",
+           "MULTICELL_ACCOUNT_PREFIX": "{account_prefix}",
            "DBT_TOKEN": "${DBT_MCP_TOKEN}",
-           "DBT_PROD_ENVIRONMENT_ID": "{production_environment_id}"
+           "DBT_PROD_ENV_ID": "{production_environment_id}"
+         }
+       }
+     }
+   }
+   ```
+
+   **Single-cell example:**
+   ```json
+   {
+     "mcpServers": {
+       "dbt": {
+         "command": "uvx",
+         "args": ["dbt-mcp"],
+         "env": {
+           "DBT_HOST": "cloud.getdbt.com",
+           "DBT_TOKEN": "${DBT_MCP_TOKEN}",
+           "DBT_PROD_ENV_ID": "{production_environment_id}"
          }
        }
      }
@@ -223,6 +255,10 @@ Check `project-config.yaml` → `mcp.auto_generate`. If `true`, configure `.mcp.
 
    The MCP service token has: `metadata_only` + `semantic_layer_only` + `job_admin` + `developer`.
    This gives agents access to discovery API, semantic layer queries, and job execution.
+
+   > **CRITICAL**: Use `DBT_PROD_ENV_ID` (not `DBT_PROD_ENVIRONMENT_ID`).
+   > For multi-cell accounts, do NOT include the account prefix in `DBT_HOST` —
+   > use `MULTICELL_ACCOUNT_PREFIX` separately. Getting this wrong breaks Semantic Layer queries.
 
 5. Tell the user to run `source .env` and **restart Claude Code** to load the MCP server.
 
