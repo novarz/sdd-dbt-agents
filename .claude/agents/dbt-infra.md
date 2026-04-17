@@ -226,12 +226,34 @@ Check `project-config.yaml` → `mcp.auto_generate`. If `true`, configure `.mcp.
 
 5. Tell the user to run `source .env` and **restart Claude Code** to load the MCP server.
 
-### Step 8 — Done
+### Step 8 — Post-deploy Semantic Layer smoke test
+
+After Step 7, verify the Semantic Layer actually works — don't trust Terraform alone.
+
+1. Use the MCP `list_metrics` tool (or call the SL API directly) to verify metrics are queryable:
+   ```bash
+   curl -s -X POST \
+     -H "Authorization: Bearer $DBT_MCP_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"environmentId": "'"$PROD_ENV_ID"'"}' \
+     "{host_url}/api/graphql" \
+     --data-raw '{"query":"{ metrics(environmentId: '"$PROD_ENV_ID"') { name } }"}'
+   ```
+
+2. If the response contains metrics → SL is working
+3. If the response contains `"Credentials have not been set up"` or similar:
+   - Verify the `dbtcloud_semantic_layer_credential_service_token_mapping.mcp` was created
+   - Re-run `terraform apply -var="enable_semantic_layer=true"` to ensure the mapping exists
+   - Check that the MCP token has `semantic_layer_only` permission
+4. Report the result to the orchestrator — never silently assume SL is working
+
+### Step 9 — Done
 
 Report to the orchestrator:
 - dbt Platform project URL
 - Production environment ID
 - Whether Semantic Layer was activated
+- **Semantic Layer smoke test result** (pass/fail)
 - `.mcp.json` generated: yes/no
 - Reminder: `source .env` + **restart Claude Code**
 
