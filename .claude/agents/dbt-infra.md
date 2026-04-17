@@ -64,25 +64,54 @@ And `git remote get-url origin` for the SSH remote URL.
 
 For any values still missing, ask the user via `AskUserQuestion`. Show `docs/regions.md` when asking for `dbt_platform.host_url`.
 
-### Step 2 — Auto-discover GitHub installation ID (if needed)
+### Step 2 — Configure git provider
 
-If `git.github_installation_id` is `000000000` (placeholder), try auto-discovery:
+Read `git.provider` from `project-config.yaml` and set up the repository connection.
 
+**GitHub** (`git.provider: github`):
+
+If `git.github.installation_id` is `000000000` (placeholder), try auto-discovery:
 ```bash
-# Ensure gh has admin:org scope
 gh auth refresh -h github.com -s admin:org 2>/dev/null || true
-
-# Discover the dbt GitHub App installation ID
 gh api "orgs/$GITHUB_ORG/installations" \
   --jq '.installations[] | select(.app_slug | test("dbt")) | {id: .id, app_slug: .app_slug}'
 ```
-
 Update `project-config.yaml` with the discovered ID.
+If auto-discovery fails, point the user to `docs/find-github-installation-id.md`.
 
-If the API call fails, returns empty, or the user has a personal account (not an org):
-1. Point the user to `docs/find-github-installation-id.md`
-2. They can find it manually at: `https://github.com/organizations/{ORG}/settings/installations`
-3. Ask the user to provide the ID directly
+Terraform mapping:
+```
+git.github.clone_strategy    → git_clone_strategy ("github_app" or "deploy_key")
+git.github.installation_id   → github_installation_id
+```
+
+**GitLab** (`git.provider: gitlab`):
+
+Terraform uses `deploy_token` or `deploy_key` clone strategy. The user must:
+1. Create a Deploy Token in GitLab → Settings → Repository → Deploy Tokens
+2. Set `TF_VAR_gitlab_deploy_token_username` and `TF_VAR_gitlab_deploy_token` in `.env`
+3. Provide the GitLab project ID (`git.gitlab.project_id`)
+
+Terraform mapping:
+```
+git.gitlab.clone_strategy    → git_clone_strategy ("deploy_token")
+git.gitlab.project_id        → gitlab_project_id
+git.remote_url               → git_remote_url (HTTPS format for GitLab)
+```
+
+**Azure DevOps** (`git.provider: azure_devops`):
+
+Terraform uses `azure_active_directory_app` clone strategy. The user must:
+1. Register an Azure AD application with access to the Azure DevOps org
+2. Set `TF_VAR_azure_ad_app_client_id` and `TF_VAR_azure_ad_app_client_secret` in `.env`
+3. Provide the tenant ID (`git.azure_devops.tenant_id`)
+
+Terraform mapping:
+```
+git.azure_devops.clone_strategy  → git_clone_strategy ("azure_active_directory_app")
+git.azure_devops.tenant_id      → azure_ad_tenant_id
+git.remote_url                   → git_remote_url
+```
 
 ### Step 3 — Generate terraform.tfvars
 
@@ -101,11 +130,16 @@ dbt_platform.project_name          → project_name
 dbt_platform.dbt_version           → dbt_version
 git.remote_url                     → git_remote_url
 git.branch                         → git_branch
-git.clone_strategy                 → git_clone_strategy
-git.github_installation_id         → github_installation_id
+git.provider                       → (determines clone_strategy and provider-specific vars)
+git.github.*                       → github_installation_id, git_clone_strategy (github only)
+git.gitlab.*                       → gitlab_project_id, git_clone_strategy (gitlab only)
+git.azure_devops.*                 → azure_ad_tenant_id, git_clone_strategy (ado only)
 snowflake.*                        → snowflake_* (only for snowflake)
+snowflake.auth_method              → snowflake_auth_type ("password" or "keypair")
 bigquery.*                         → bigquery_* + gcp_* (only for bigquery)
+bigquery.auth_method               → (determines which credential fields are required)
 databricks.*                       → databricks_* (only for databricks)
+databricks.auth_method             → (determines token vs oauth credential fields)
 schemas.prefix                     → schema_prefix
 schemas.development                → schema_development
 schemas.staging                    → schema_staging
