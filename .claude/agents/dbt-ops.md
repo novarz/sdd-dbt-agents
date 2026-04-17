@@ -143,6 +143,49 @@ Flag:
 - `freshnessStatus: "warn"` → **Warning** — approaching staleness
 - `freshnessStatus: null` → **Unknown** — freshness not configured (recommend adding it)
 
+#### Step 2b — Source schema drift detection
+
+Compare what dbt expects (source YAML) vs what actually exists in the warehouse.
+This catches upstream changes (Core Banking, SAP, ETL pipelines) before they break jobs.
+
+**For each source, get the expected columns from MCP:**
+```
+MCP: get_source_details(unique_id="source.{project}.{source}.{table}")
+→ returns columns with names and data_types
+```
+
+**Then query the actual warehouse schema:**
+```bash
+$DBT_CMD show --inline "
+  SELECT column_name, data_type
+  FROM information_schema.columns
+  WHERE table_schema = '{schema}' AND table_name = '{table}'
+  ORDER BY ordinal_position
+"
+```
+
+**Compare and flag:**
+
+| Drift Type | Severity | Example |
+|-----------|----------|---------|
+| Column dropped | **CRITICAL** | `customer_email` exists in YAML but not in warehouse |
+| Column added | Info | New column in warehouse not in YAML (opportunity, not a problem) |
+| Type changed | **High** | `amount` was `NUMBER` now `VARCHAR` — will break casts |
+| Column renamed | **CRITICAL** | Old name gone, new name appears — staging model will fail |
+
+**Report:**
+```markdown
+## Source Schema Drift
+
+| Source | Table | Drift | Column | Expected | Actual | Severity |
+|--------|-------|-------|--------|----------|--------|----------|
+| core_banking | loans | dropped | customer_email | varchar | — | 🔴 CRITICAL |
+| core_banking | loans | type_changed | amount | number | varchar | 🟠 HIGH |
+| core_banking | loans | added | new_flag | — | boolean | ℹ️ INFO |
+```
+
+**Generate incident story if CRITICAL or HIGH drift found.**
+
 #### Step 3 — Performance trends
 
 For each mart model, check if it's slowing down:
@@ -212,6 +255,9 @@ Write to `specs/ops/health-report-{date}.md`:
 |-------|-------------|--------|-------|-------|
 | fct_loan_daily_snapshot | 45s | 72s | ↑ 60% | ⚠️ |
 
+## Source Schema Drift
+{drift table from Step 2b — only shown if drift detected}
+
 ## Job Status
 | Job | Last Run | Status | Schedule |
 |-----|----------|--------|----------|
@@ -241,6 +287,11 @@ Each story is a standalone file that can be fed to Phase 1 (spec-analyst) to sta
 | PII columns without masking_required | "Aplicar masking a columnas PII en {mart}: configurar warehouse masking policies" |
 | PII column exposed in public access model | "**CRITICAL**: {model}.{column} es PII con access: public — restringir acceso o aplicar masking" |
 | No Semantic Layer metrics for mart Z | "Crear métricas de Semantic Layer para {mart}: identificar measures y dimensions clave" |
+| Source column dropped (schema drift) | "**CRITICAL**: source {source}.{column} ya no existe en warehouse — actualizar staging model y source YAML" |
+| Source column type changed | "Source {source}.{column} cambió de {old_type} a {new_type} — revisar casts en staging model" |
+| New column in source not in YAML | "Nuevo campo {column} en source {source} — evaluar si añadir a staging y downstream" |
+| Public mart modified without versioning | "**CRITICAL**: {model} tiene access: public y se han eliminado/renombrado columnas sin model version" |
+| Model version with expired deprecation | "Eliminar version v{N} de {model} — deprecation_date ya pasó, verificar que no queden consumidores" |
 | Job failures >2x/week on same model | "Investigar inestabilidad de {model}: analizar root cause de fallos recurrentes" |
 | Mart without contract enforced | "Añadir contract: enforced a {mart} con data_types y constraints" |
 | Source schema hardcoded | "Migrar source {source} a dbt vars (source_database, source_schema_prefix)" |
