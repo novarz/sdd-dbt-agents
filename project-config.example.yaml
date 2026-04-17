@@ -13,37 +13,89 @@ dbt_platform:
   account_id: 000                          # REPLACE: your dbt Platform account ID
   host_url: "https://emea.dbt.com/api"    # REPLACE: see docs/regions.md
   project_name: "my_project"               # REPLACE
-  dbt_version: "versionless"
+  dbt_version: "versionless"               # versionless | latest-fusion | X.Y.0-latest
 
 # ─── Git Repository ──────────────────────────────────────────────────────────
+# Supported providers: github, gitlab, azure_devops
+# Each provider has different clone strategies and required fields.
 git:
+  provider: "github"                         # github | gitlab | azure_devops
   remote_url: "git@github.com:MY_ORG/MY_REPO.git"  # REPLACE
-  branch: "main"                                     # branch for all environments
-  clone_strategy: "github_app"                       # github_app | deploy_key
-  github_installation_id: 000000000                  # REPLACE: see docs/find-github-installation-id.md
+  branch: "main"                             # branch for all environments
 
-# ─── Warehouse Connection (fill the section matching your warehouse_platform) ─
+  # ── GitHub (provider: github) ──────────────────────────────────────────────
+  # Clone strategy: github_app (recommended) or deploy_key
+  github:
+    clone_strategy: "github_app"             # github_app | deploy_key
+    installation_id: 000000000               # REPLACE: see docs/find-github-installation-id.md
+    # For deploy_key, the key is set via env var: TF_VAR_git_deploy_key
+
+  # ── GitLab (provider: gitlab) ──────────────────────────────────────────────
+  # Clone strategy: deploy_token (recommended) or deploy_key
+  # gitlab:
+  #   clone_strategy: "deploy_token"
+  #   project_id: 12345678                   # GitLab project ID (Settings → General)
+  #   # Deploy token credentials go in .env:
+  #   #   export TF_VAR_gitlab_deploy_token_username="deploy-token-username"
+  #   #   export TF_VAR_gitlab_deploy_token="gldt-xxxxxxxxxxxx"
+
+  # ── Azure DevOps (provider: azure_devops) ──────────────────────────────────
+  # Clone strategy: azure_active_directory_app
+  # azure_devops:
+  #   clone_strategy: "azure_active_directory_app"
+  #   tenant_id: "00000000-0000-0000-0000-000000000000"    # Azure AD tenant
+  #   project_url: "https://dev.azure.com/MY_ORG/MY_PROJECT"
+  #   # App credentials go in .env:
+  #   #   export TF_VAR_azure_ad_app_client_id="..."
+  #   #   export TF_VAR_azure_ad_app_client_secret="..."
+
+# ─── Warehouse Connection ────────────────────────────────────────────────────
+# Fill only the section matching your warehouse_platform.
+# Each warehouse supports multiple authentication methods.
 
 snowflake:
   account: "MY_ACCOUNT"          # REPLACE: e.g. zna84829
   database: "MY_DATABASE"        # REPLACE
   warehouse: "MY_WAREHOUSE"      # REPLACE
-  user: "MY_USER"                # REPLACE
   role: ""                       # optional, leave empty for default
+  auth_method: "password"        # password | keypair
+  # ── password auth ──
+  user: "MY_USER"                # REPLACE
+  # Password goes in .env: export TF_VAR_snowflake_password="..."
+  # ── keypair auth ──
+  # user: "MY_SERVICE_USER"
+  # Private key goes in .env: export TF_VAR_snowflake_private_key="..."
+  # Passphrase (optional): export TF_VAR_snowflake_private_key_passphrase="..."
 
 bigquery:
-  gcp_project_id: "MY_GCP_PROJECT"                                        # REPLACE
-  location: "US"                                                           # US, EU, us-central1, etc.
-  client_email: "sa@my-project.iam.gserviceaccount.com"                    # REPLACE
-  client_id: "000000000000000000000"                                       # REPLACE
-  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/sa%40my-project.iam.gserviceaccount.com"  # REPLACE
+  gcp_project_id: "MY_GCP_PROJECT"           # REPLACE
+  location: "US"                              # US, EU, us-central1, etc.
+  auth_method: "service_account"              # service_account | oauth
   timeout_seconds: 300
   retries: 1
+  # ── service_account auth ──
+  client_email: "sa@my-project.iam.gserviceaccount.com"  # REPLACE
+  client_id: "000000000000000000000"                      # REPLACE
+  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/sa%40my-project.iam.gserviceaccount.com"
+  # Keys go in .env:
+  #   export TF_VAR_bigquery_private_key_id="..."
+  #   export TF_VAR_bigquery_private_key="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
+  # ── oauth auth ──
+  # No service account needed — uses the user's OAuth token.
+  # Requires dbt Platform OAuth integration configured in Account Settings.
 
 databricks:
-  host: "https://dbc-a1b2c3d4-e5f6.cloud.databricks.com"   # REPLACE
+  host: "https://dbc-a1b2c3d4-e5f6.cloud.databricks.com"  # REPLACE
   http_path: "/sql/1.0/warehouses/abc123def456"              # REPLACE
   catalog: "analytics"                                        # REPLACE: Unity Catalog name
+  auth_method: "token"                                        # token | oauth
+  # ── token auth (PAT) ──
+  # Token goes in .env: export TF_VAR_databricks_token="dapi..."
+  # ── oauth auth (service principal) ──
+  # Requires Databricks OAuth app configured.
+  # Credentials go in .env:
+  #   export TF_VAR_databricks_client_id="..."
+  #   export TF_VAR_databricks_client_secret="..."
 
 # ─── Environments / Schemas ──────────────────────────────────────────────────
 schemas:
@@ -104,12 +156,26 @@ mcp:
 # All platforms:
 #   export TF_VAR_dbt_token="dbtc_..."
 #
-# Snowflake:
+# Snowflake (password):
 #   export TF_VAR_snowflake_password="..."
+# Snowflake (keypair):
+#   export TF_VAR_snowflake_private_key="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
+#   export TF_VAR_snowflake_private_key_passphrase="..."   # optional
 #
-# BigQuery:
+# BigQuery (service_account):
 #   export TF_VAR_bigquery_private_key_id="..."
 #   export TF_VAR_bigquery_private_key="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
 #
-# Databricks:
+# Databricks (token):
 #   export TF_VAR_databricks_token="dapi..."
+# Databricks (oauth):
+#   export TF_VAR_databricks_client_id="..."
+#   export TF_VAR_databricks_client_secret="..."
+#
+# GitLab:
+#   export TF_VAR_gitlab_deploy_token_username="..."
+#   export TF_VAR_gitlab_deploy_token="gldt-..."
+#
+# Azure DevOps:
+#   export TF_VAR_azure_ad_app_client_id="..."
+#   export TF_VAR_azure_ad_app_client_secret="..."
