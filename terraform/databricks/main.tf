@@ -191,7 +191,7 @@ resource "dbtcloud_job" "daily_prod" {
   project_id     = dbtcloud_project.this.id
   environment_id = dbtcloud_environment.production.environment_id
   name           = "Daily Build (Production)"
-  execute_steps  = ["dbt build --exclude resource_type:unit_test"]
+  execute_steps  = ["dbt source freshness", "dbt build --exclude resource_type:unit_test"]
   dbt_version    = var.dbt_version
   generate_docs  = true
 
@@ -212,7 +212,7 @@ resource "dbtcloud_job" "slim_ci" {
   project_id     = dbtcloud_project.this.id
   environment_id = dbtcloud_environment.staging.environment_id
   name           = "Slim CI"
-  execute_steps  = ["dbt build --select state:modified+"]
+  execute_steps  = ["dbt build --select state:modified+", "dbt test --select state:modified+,resource_type:unit_test"]
   dbt_version    = var.dbt_version
 
   # Defer to the staging environment state so Slim CI only runs modified nodes
