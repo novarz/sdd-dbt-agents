@@ -252,6 +252,66 @@ packages:
     revision: main
 ```
 
+## 5b. Model Versioning Strategy
+
+**When a mart model has `access: public` and downstream consumers (dashboards, exports, other
+projects), breaking changes MUST use dbt model versions.**
+
+A breaking change is:
+- Removing a column
+- Renaming a column
+- Changing a column's data type
+- Changing the grain of the model
+
+**Not breaking** (no version needed):
+- Adding a new column
+- Changing a column's description
+- Adding tests
+- Changing the SQL logic without changing the output schema
+
+### Version design pattern
+
+```yaml
+models:
+  - name: fct_loan_daily_snapshot
+    access: public
+    latest_version: 2
+    config:
+      contract:
+        enforced: true
+    versions:
+      - v: 1
+        deprecation_date: 2026-07-01     # consumers have 3 months to migrate
+        columns:
+          # v1 schema — frozen, do not modify
+          - include: all
+      - v: 2
+        columns:
+          # v2 schema — new columns, renamed fields
+          - include: all
+          - name: new_column_name
+            data_type: string
+```
+
+### Decision criteria for the design
+
+For each mart with `access: public`, the design must state:
+- **Current version**: v{N} or "no versioning yet"
+- **Breaking changes in this feature**: yes/no
+- **If yes**: define v{N+1} with deprecation date for v{N} (minimum 30 days)
+- **Impact analysis**: list known consumers (dashboards, exports, other dbt projects)
+
+Include in the design:
+```markdown
+## Model Versioning
+
+| Model | Access | Current Version | Breaking Change? | Action |
+|-------|--------|----------------|------------------|--------|
+| fct_loan_daily_snapshot | public | v1 | No | No version needed |
+| dim_customer | public | v1 | Yes (rename column) | Create v2, deprecate v1 in 90 days |
+| dim_loan | protected | — | Yes | No version needed (not public) |
+```
+
 ## 6. Estrategia de Testing
 
 | Tipo | Modelos | Tests |

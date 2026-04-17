@@ -196,6 +196,25 @@ Ephemeral models have no persistent relation, so unit tests that reference them 
 dbt build --exclude resource_type:unit_test
 ```
 
+## Model Versioning
+
+When the `design.md` specifies a breaking change on a public mart, implement dbt model versions:
+
+1. **Create the versioned SQL file**: `models/marts/fct_{entity}_v{N}.sql`
+2. **Update the YAML** with a `versions` block (see `dbt-architect.md` for the pattern)
+3. **Keep the old version untouched** — it continues serving existing consumers
+4. **Set `deprecation_date`** on the old version per the design
+5. **Update `latest_version`** in the YAML
+
+**How `ref()` works with versions:**
+- `{{ ref('fct_loan_daily_snapshot') }}` → resolves to the latest version
+- `{{ ref('fct_loan_daily_snapshot', v=1) }}` → resolves to v1 specifically
+- Downstream consumers using unversioned `ref()` automatically get the new version
+
+**STOP check:** If you're about to remove or rename a column on a `access: public` model
+and the design.md does NOT specify a version bump, **STOP and report to the orchestrator**.
+This is a breaking change that needs versioning.
+
 ## DRY Principles
 
 - Before adding a new model or column, verify the same logic doesn't exist elsewhere

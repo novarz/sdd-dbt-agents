@@ -112,6 +112,19 @@ because it silently serves stale or test data in production.
 - [ ] `access` level configured if multi-project (public/protected/private)
 - [ ] `group` assignment if project uses groups
 
+### 3b. Model Versioning
+
+For each public mart model that was **modified** in this feature:
+- [ ] Compare the current column schema against the previous version (git diff or MCP)
+- [ ] If columns were removed, renamed, or had type changes → **breaking change**
+- [ ] Breaking changes on `access: public` models MUST have a `versions` block with `deprecation_date`
+- [ ] If breaking change exists without versioning → **CRITICAL**
+- [ ] If versioning exists, verify `deprecation_date` is at least 30 days in the future
+
+**Breaking change without model versioning on a public mart is CRITICAL** — it will
+silently break every downstream consumer (dashboards, exports, other dbt projects)
+with no migration path.
+
 ### 4. STOP Check Compliance (from analytics engineering skill)
 
 Verify the implementation followed the mandatory workflow:
