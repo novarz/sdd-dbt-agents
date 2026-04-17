@@ -354,6 +354,47 @@ In this mode:
 
 This is NOT a flag or setting — it's a user instruction that the orchestrator follows for the current session.
 
+## Demo Catalog
+
+Pre-built spec templates for common verticals. The user picks a template, the orchestrator copies it and runs the SDD workflow — no manual spec writing needed.
+
+### Available templates
+
+| Template | Directory | Description |
+|----------|-----------|-------------|
+| Banking: Loan Risk | `specs/templates/banking-loan-risk/` | Morosidad, NPL ratio, provisiones IFRS 9, Semantic Layer |
+
+### How it works
+
+**Trigger:** User says "quiero montar la demo de banking" or "dame el template de loan risk".
+
+1. List available templates from `specs/templates/`
+2. Copy the template to `specs/{feature_name}/`:
+   ```bash
+   cp -r specs/templates/{template}/ specs/{feature_name}/
+   ```
+3. **Determine starting phase** based on what the template includes:
+   - Only `requirements.md` → start at **Phase 2** (design) — skip Phase 1
+   - `requirements.md` + `design.md` → start at **Phase 3** (planning) — skip 1-2
+   - All three (`requirements.md` + `design.md` + `tasks.md`) → start at **Phase 4** (implementation) — skip 1-3
+4. Create `progress.md` and mark skipped phases as `📋 from template`
+5. Present the pre-built specs to the user for a quick review before proceeding
+6. **GATE: User must approve** — templates save time but the user still validates
+
+### Adding new templates
+
+To add a template for a new vertical:
+
+1. Run the full SDD workflow for the vertical (Phase 1-5)
+2. Once approved, copy the specs to `specs/templates/{vertical}/`
+3. Remove dates, specific usernames, and environment-specific values
+4. Add an entry to the table above
+5. Commit to `main`
+
+Templates should be **warehouse-agnostic** — no hardcoded Snowflake/BigQuery references. Source schemas use `{{ var() }}` and are configured at deploy time.
+
 ## Quick Start
 
 When user says something like "quiero construir un modelo de..." or "necesito una métrica de...", begin Phase 1 immediately by launching `spec-analyst`.
+
+When user says something like "quiero la demo de..." or "monta el template de...", check `specs/templates/` and follow the Demo Catalog workflow above.
