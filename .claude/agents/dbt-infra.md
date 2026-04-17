@@ -101,10 +101,30 @@ schemas.prefix                     → schema_prefix
 schemas.development                → schema_development
 schemas.staging                    → schema_staging
 schemas.production                 → schema_production
+sources.source_database            → source_database
+sources.source_schema_prefix       → source_schema_prefix
+sources.production.source_database → source_database_production (if set)
+sources.production.source_schema_prefix → source_schema_prefix_production (if set)
 jobs.daily_schedule_hours           → daily_job_schedule_hours
 ```
 
 Never write tokens, passwords, or private keys to `terraform.tfvars` — those come from `.env` via `TF_VAR_*`.
+
+**Environment variables for source schemas:**
+When `source_database` and `source_schema_prefix` are set in tfvars, Terraform creates
+`dbtcloud_environment_variable` resources (`DBT_SOURCE_DATABASE`, `DBT_SOURCE_SCHEMA_PREFIX`)
+that inject the correct values per environment. Production can use different source schemas
+than dev/staging — useful when dev reads from seeds but prod reads from real data.
+
+The dbt project must use `env_var()` with fallback in `dbt_project.yml`:
+```yaml
+vars:
+  source_database: "{{ env_var('DBT_SOURCE_DATABASE', 'ANALYTICS') }}"
+  source_schema_prefix: "{{ env_var('DBT_SOURCE_SCHEMA_PREFIX', 'dbt_sduran') }}"
+```
+
+For demos (seed-based), all environments share the same values. For real projects,
+set `sources.production.*` in `project-config.yaml` to point prod to real data schemas.
 
 ### Step 4 — Ensure repo exists on GitHub
 

@@ -118,6 +118,32 @@ variable "enable_semantic_layer" {
   default     = false
 }
 
+# ─── Environment Variables (source overrides per environment) ─────────────
+
+variable "source_database" {
+  description = "Default source database/catalog for all environments"
+  type        = string
+  default     = ""
+}
+
+variable "source_schema_prefix" {
+  description = "Default source schema prefix for all environments"
+  type        = string
+  default     = ""
+}
+
+variable "source_database_production" {
+  description = "Source database override for production (empty = use default)"
+  type        = string
+  default     = ""
+}
+
+variable "source_schema_prefix_production" {
+  description = "Source schema prefix override for production (empty = use default)"
+  type        = string
+  default     = ""
+}
+
 # ─── Jobs ─────────────────────────────────────────────────────────────────────
 
 variable "daily_job_schedule_hours" {
