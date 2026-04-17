@@ -133,6 +133,28 @@ Analyze test coverage across the project:
 - [ ] `group` assignments if applicable
 - [ ] Cross-project refs would work (no hardcoded refs to other projects)
 
+### Step 7b — Data classification & PII scan
+
+Reference: `docs/data-classification.md`
+
+Scan all mart columns for:
+1. **Missing classification**: columns without `meta.classification` → flag as gap
+2. **PII exposure**: columns matching PII name patterns (email, phone, dni, iban, name, address)
+   that don't have `classification: "pii"` → flag as **CRITICAL**
+3. **Public PII**: PII columns in models with `access: public` without masking → **CRITICAL**
+
+Report:
+
+| Model | Column | Pattern Match | Current Classification | Issue |
+|-------|--------|--------------|----------------------|-------|
+| dim_customer | customer_email | email | — | ❌ Unclassified PII |
+| dim_customer | segment | — | — | ⚠️ Unclassified |
+| fct_loan | outstanding_balance | balance | — | ⚠️ Likely confidential |
+
+Use both column name pattern matching AND LLM judgment based on column description
+and model context. A column named `id` might not be PII in a fact table but could be
+in a customer dimension.
+
 ### Step 8 — Semantic Layer
 
 If metrics exist:

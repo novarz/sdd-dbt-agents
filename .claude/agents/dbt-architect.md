@@ -114,6 +114,43 @@ models:
         constraints:
           - type: not_null
           - type: unique
+        meta:
+          classification: "internal"
+      - name: {sensitive_column}
+        data_type: string
+        meta:
+          classification: "pii"         # pii | confidential | internal | public
+          pii_type: "email"             # only if classification = pii
+          masking_required: true         # only if classification = pii
+```
+
+## 3b. Data Classification
+
+**Every mart column MUST have `meta.classification`** in the design. Use `docs/data-classification.md`
+as reference for pattern matching and classification rules.
+
+Classify all columns in the design phase — don't leave it for implementation:
+
+| Classification | When to use | Masking |
+|---------------|-------------|---------|
+| `pii` | Identifies a natural person (email, DNI, phone, name, address) | Required |
+| `confidential` | Sensitive business data (credit score, salary, risk rating, provisions) | Recommended |
+| `internal` | Normal business data (product_type, branch_id, segment) | Not needed |
+| `public` | Can be shared externally (aggregated counts, date ranges) | Not needed |
+
+**Context matters:** `customer_id` in a staging model is PII (links to a person). The same
+column in an aggregated fact (e.g., count of customers per segment) is `internal`.
+
+The design document must include a **Data Classification Summary** table:
+
+```markdown
+## Data Classification Summary
+
+| Model | PII Columns | Confidential | Masking Required |
+|-------|------------|--------------|------------------|
+| fct_loan_daily_snapshot | — | outstanding_balance, provision_amount, risk_rating | No (no direct PII) |
+| dim_customer | customer_email, phone_number, dni | segment | Yes |
+| dim_loan | — | interest_rate, collateral_value | No |
 ```
 
 ## 4. Sources
