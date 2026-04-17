@@ -358,6 +358,7 @@ Agents use different models based on whether the task requires analysis/judgment
 | Agent | Model | Rationale |
 |-------|-------|-----------|
 | dbt-inspector | opus | Deep analysis, cross-referencing MCP data with code, architectural judgment |
+| dbt-ops | opus | Production diagnosis, pattern recognition across runs, story generation |
 | spec-analyst | opus | Requires business analysis, ambiguity resolution, structured writing |
 | dbt-architect | opus | Architectural decisions, trade-off analysis, Mesh assessment |
 | dbt-reviewer | opus | Judgment calls on quality, traceability validation |
@@ -428,23 +429,25 @@ Templates should be **warehouse-agnostic** — no hardcoded Snowflake/BigQuery r
 When a user starts a conversation, determine which path to follow:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    ¿Qué quieres hacer?                          │
-├─────────────┬─────────────────┬──────────────┬─────────────────┤
-│  A) Nuevo   │ B) Existente    │ C) Demo      │ D) Auditar      │
-│  proyecto   │ añadir feature  │              │                 │
-├─────────────┼─────────────────┼──────────────┼─────────────────┤
-│ Phase 0     │ Phase 0b        │ Copy template│ Phase 0b        │
-│ (scaffold)  │ (inspector)     │ from catalog │ (inspector)     │
-│      ↓      │      ↓          │      ↓       │      ↓          │
-│ Phase 1     │ project-profile │ Skip to      │ project-profile │
-│ (spec)      │      ↓          │ Phase 2/3/4  │      ↓          │
-│      ↓      │ Terraform import│      ↓       │ Recommendations │
-│ Phase 2-6   │ (if on Platform)│ Phase 2-6    │ (done)          │
-│             │      ↓          │              │                 │
-│             │ Phase 1 → 2-6   │              │                 │
-│             │ (new feature)   │              │                 │
-└─────────────┴─────────────────┴──────────────┴─────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         ¿Qué quieres hacer?                                  │
+├─────────────┬─────────────────┬──────────────┬──────────────┬───────────────┤
+│  A) Nuevo   │ B) Existente    │ C) Demo      │ D) Auditar   │ E) Ops /      │
+│  proyecto   │ añadir feature  │              │              │ Producción    │
+├─────────────┼─────────────────┼──────────────┼──────────────┼───────────────┤
+│ Phase 0     │ Phase 0b        │ Copy template│ Phase 0b     │ dbt-ops       │
+│ (scaffold)  │ (inspector)     │ from catalog │ (inspector)  │ (MCP)         │
+│      ↓      │      ↓          │      ↓       │      ↓       │      ↓        │
+│ Phase 1     │ project-profile │ Skip to      │ Recommend.   │ Diagnose /    │
+│ (spec)      │      ↓          │ Phase 2/3/4  │ (done)       │ Health sweep  │
+│      ↓      │ Terraform import│      ↓       │              │      ↓        │
+│ Phase 2-6   │ (if on Platform)│ Phase 2-6    │              │ Backlog:      │
+│             │      ↓          │              │              │ user stories  │
+│             │ Phase 1 → 2-6   │              │              │      ↓        │
+│             │ (new feature)   │              │              │ → Phase 1     │
+│             │                 │              │              │ (feedback     │
+│             │                 │              │              │  loop)        │
+└─────────────┴─────────────────┴──────────────┴──────────────┴───────────────┘
 ```
 
 ### Route detection
@@ -454,7 +457,10 @@ When a user starts a conversation, determine which path to follow:
 | "quiero construir un modelo de..." / "necesito una métrica de..." | A | Phase 0 → Phase 1 |
 | "quiero añadir X a mi proyecto" / "tengo un proyecto dbt y quiero..." | B | Phase 0b → import → Phase 1 |
 | "quiero la demo de..." / "monta el template de..." | C | Demo Catalog |
-| "revisa el proyecto" / "hazme un audit" / "health check" | D | Phase 0b (standalone) |
+| "revisa el proyecto" / "hazme un audit" | D | Phase 0b (standalone) |
+| "el job ha fallado" / "qué pasa en prod" / "los datos no se actualizan" | E | dbt-ops (incident) |
+| "cómo está prod" / "health check de producción" | E | dbt-ops (health sweep) |
+| "qué podemos mejorar" / "genera backlog" | E | dbt-ops (improvement stories) |
 
 ### If unsure, ask:
 
