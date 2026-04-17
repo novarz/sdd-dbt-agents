@@ -145,9 +145,15 @@ Reference: `docs/data-classification.md`
 - [ ] PII columns have `meta.pii_type` and `meta.masking_required: true`
 - [ ] No PII columns are exposed in public marts without masking strategy documented
 
-**Pattern scan:** For each mart column, check the column name against the PII patterns
-in `docs/data-classification.md`. If a column matches a PII pattern but is NOT classified
-as `pii`, this is a **CRITICAL** finding.
+**Detection (3 steps — see `docs/data-classification.md` for details):**
+1. **Pattern match** — scan column names against PII patterns (always runs)
+2. **LLM judgment** — classify ambiguous columns using name + description + model context (always runs)
+3. **Data sampling** — only if `classification.enable_sampling: true` in `project-config.yaml`.
+   Queries actual values from `{sampling_environment}` to detect PII in text/varchar columns.
+   **Never sample from prod.**
+
+If a column matches a PII pattern (step 1) or is judged to be PII (step 2) but is NOT
+classified as `pii`, this is a **CRITICAL** finding.
 
 **Classification coverage table:**
 

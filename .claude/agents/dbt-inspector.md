@@ -151,9 +151,13 @@ Report:
 | dim_customer | segment | — | — | ⚠️ Unclassified |
 | fct_loan | outstanding_balance | balance | — | ⚠️ Likely confidential |
 
-Use both column name pattern matching AND LLM judgment based on column description
-and model context. A column named `id` might not be PII in a fact table but could be
-in a customer dimension.
+**Detection method (3 steps):**
+1. **Pattern match** — scan column names against `docs/data-classification.md` patterns (always)
+2. **LLM judgment** — use column name + description + model context to classify ambiguous columns (always)
+3. **Data sampling** — only if `classification.enable_sampling: true` in `project-config.yaml`.
+   Query `SELECT DISTINCT {column} LIMIT {sampling_limit}` on `{sampling_environment}` to detect
+   PII values in text/varchar columns with generic names (notes, comments, external_ref).
+   **Never sample from prod.**
 
 ### Step 8 — Semantic Layer
 
