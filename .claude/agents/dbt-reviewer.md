@@ -117,6 +117,11 @@ Verify the implementation followed the mandatory workflow:
 | Source freshness configurada | {N}/{M} | 100% | ✅/❌ |
 | Traceability comments | {N}/{M} | 100% | ✅/❌ |
 
+**Source freshness rule:** Every source that feeds incremental or daily-snapshot models
+MUST have `freshness` and `loaded_at_field` configured. Missing freshness on critical
+sources (e.g., transactional tables) is a **CRITICAL** finding, not an observation.
+This prevents stale data from silently propagating through the DAG.
+
 ### 6. Documentación
 
 - [ ] Every model has a `description`

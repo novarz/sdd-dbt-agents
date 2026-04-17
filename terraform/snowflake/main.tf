@@ -330,3 +330,11 @@ resource "dbtcloud_service_token" "mcp" {
     all_projects   = false
   }
 }
+
+# Map the MCP token to the SL credential so agents can query metrics
+resource "dbtcloud_semantic_layer_credential_service_token_mapping" "mcp" {
+  count                        = var.enable_semantic_layer ? 1 : 0
+  project_id                   = dbtcloud_project.this.id
+  semantic_layer_credential_id = dbtcloud_snowflake_semantic_layer_credential.this[0].id
+  service_token_id             = dbtcloud_service_token.mcp.id
+}
