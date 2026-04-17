@@ -79,6 +79,35 @@ This gives agents your actual table names, column types, lineage graph, and tran
 
 > This phase is skipped if `dbt_project.yml` already exists and `$DBT_CMD parse` passes.
 
+### Phase 0b: Project Inspection (dbt-inspector) — optional
+
+**Trigger:** User wants to onboard an existing project, audit it, or review it before adding features.
+
+This phase is for **existing projects** — not new ones. Triggers:
+- "quiero hacer onboarding de este proyecto"
+- "revisa el proyecto y dime qué mejorar"
+- "hazme un health check del proyecto"
+- "quiero añadir una feature pero primero entiende el proyecto"
+
+1. Launch `dbt-inspector` subagent with the project directory path
+2. Subagent produces `specs/project-profile.md` — a comprehensive audit covering:
+   - Architecture (layers, DAG, materializations)
+   - Source governance (schemas, freshness, vars vs hardcoded)
+   - Test coverage
+   - Documentation completeness
+   - Governance & Mesh readiness (contracts, access)
+   - Semantic Layer status
+   - Performance & health (via MCP if available)
+   - Duplication detection
+   - Prioritized improvement recommendations
+   - SDD onboarding checklist
+3. Present the profile to the user
+4. **If onboarding:** the profile's SDD checklist tells the user what to fix before Phase 1
+5. **If audit only:** the recommendations stand alone — no further phases needed
+6. **If pre-feature:** the profile gives context — proceed to Phase 1 with the user's feature request
+
+The profile is reusable: agents in Phase 4 can read `specs/project-profile.md` to understand existing conventions, naming patterns, and what not to break.
+
 ### Phase 1: Requirements (spec-analyst)
 
 **Trigger:** User describes a business need in natural language.
@@ -328,6 +357,7 @@ Agents use different models based on whether the task requires analysis/judgment
 
 | Agent | Model | Rationale |
 |-------|-------|-----------|
+| dbt-inspector | opus | Deep analysis, cross-referencing MCP data with code, architectural judgment |
 | spec-analyst | opus | Requires business analysis, ambiguity resolution, structured writing |
 | dbt-architect | opus | Architectural decisions, trade-off analysis, Mesh assessment |
 | dbt-reviewer | opus | Judgment calls on quality, traceability validation |
@@ -398,3 +428,5 @@ Templates should be **warehouse-agnostic** — no hardcoded Snowflake/BigQuery r
 When user says something like "quiero construir un modelo de..." or "necesito una métrica de...", begin Phase 1 immediately by launching `spec-analyst`.
 
 When user says something like "quiero la demo de..." or "monta el template de...", check `specs/templates/` and follow the Demo Catalog workflow above.
+
+When user says something like "revisa el proyecto", "hazme un audit", "quiero hacer onboarding", or "entiende el proyecto antes de...", launch `dbt-inspector` (Phase 0b).
