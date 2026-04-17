@@ -73,10 +73,11 @@ For each missing source table, create a CSV seed with realistic sample data:
 **Configure seed schemas in `dbt_project.yml`** using the values from `project-config.yaml`:
 
 ```yaml
-# Read sources.source_database and sources.source_schema_prefix from project-config.yaml
+# Read sources.source_database and sources.source_schema_prefix from project-config.yaml.
+# Use env_var() with fallback so dbt Platform can override per environment.
 vars:
-  source_database: "ANALYTICS"              # from project-config.yaml → sources.source_database
-  source_schema_prefix: "dbt_myproject"     # from project-config.yaml → sources.source_schema_prefix
+  source_database: "{{ env_var('DBT_SOURCE_DATABASE', 'ANALYTICS') }}"
+  source_schema_prefix: "{{ env_var('DBT_SOURCE_SCHEMA_PREFIX', 'dbt_myproject') }}"
 
 seeds:
   {project_name}:

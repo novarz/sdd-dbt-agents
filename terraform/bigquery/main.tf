@@ -225,6 +225,46 @@ resource "dbtcloud_job" "slim_ci" {
   }
 }
 
+# ─── Environment Variables (source schema overrides) ─────────────────────────
+
+resource "dbtcloud_environment_variable" "source_database" {
+  count      = var.source_database != "" ? 1 : 0
+  name       = "DBT_SOURCE_DATABASE"
+  project_id = dbtcloud_project.this.id
+
+  environment_values = {
+    "project"     = var.source_database
+    "Development" = var.source_database
+    "Staging"     = var.source_database
+    "Production"  = var.source_database_production != "" ? var.source_database_production : var.source_database
+  }
+
+  depends_on = [
+    dbtcloud_environment.development,
+    dbtcloud_environment.staging,
+    dbtcloud_environment.production,
+  ]
+}
+
+resource "dbtcloud_environment_variable" "source_schema_prefix" {
+  count      = var.source_schema_prefix != "" ? 1 : 0
+  name       = "DBT_SOURCE_SCHEMA_PREFIX"
+  project_id = dbtcloud_project.this.id
+
+  environment_values = {
+    "project"     = var.source_schema_prefix
+    "Development" = var.source_schema_prefix
+    "Staging"     = var.source_schema_prefix
+    "Production"  = var.source_schema_prefix_production != "" ? var.source_schema_prefix_production : var.source_schema_prefix
+  }
+
+  depends_on = [
+    dbtcloud_environment.development,
+    dbtcloud_environment.staging,
+    dbtcloud_environment.production,
+  ]
+}
+
 # ─── Semantic Layer ───────────────────────────────────────────────────────────
 # Requires a successful production job run before applying.
 # Step 1: terraform apply (enable_semantic_layer = false, default)

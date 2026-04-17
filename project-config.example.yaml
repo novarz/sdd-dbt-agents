@@ -72,6 +72,12 @@ sources:
   #     schema: "core_banking_raw"
   #   reference_data:
   #     schema: "ref_data"
+  #
+  # Production overrides (optional — for real projects where prod reads from different schemas):
+  # If omitted, production uses the same values as dev/staging (useful for demos with seeds).
+  # production:
+  #   source_database: "RAW_DATA"
+  #   source_schema_prefix: "raw"
 
 # ─── Jobs ────────────────────────────────────────────────────────────────────
 jobs:
