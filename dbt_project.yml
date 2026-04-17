@@ -17,6 +17,11 @@ clean-targets:
 vars:
   loan_portfolio_risk:
     active_loan_statuses: ['active', 'restructured']
+    # Source location — shared across all environments for demo projects.
+    # Seeds and sources both resolve to the same schemas.
+    # For real projects, override per environment via dbt Platform env vars.
+    source_database: "ANALYTICS"
+    source_schema_prefix: "dbt_sduran"
 
 models:
   loan_portfolio_risk:
@@ -53,8 +58,8 @@ seeds:
         ifrs9_stage: integer
         provision_rate: numeric
     core_banking:
-      +database: ANALYTICS
-      +schema: dbt_sduran_core_banking
+      +database: "{{ var('source_database') }}"
+      +schema: "{{ var('source_schema_prefix') }}_core_banking"
     reference_data:
-      +database: ANALYTICS
-      +schema: dbt_sduran_reference_data
+      +database: "{{ var('source_database') }}"
+      +schema: "{{ var('source_schema_prefix') }}_reference_data"
