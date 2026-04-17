@@ -190,6 +190,65 @@ Based on all findings, produce prioritized recommendations:
 **Low** (nice-to-have):
 - Semantic layer opportunities, performance optimizations, DRY improvements
 
+### Step 12 — Terraform import assessment (if project is on dbt Platform)
+
+If MCP is connected and `list_projects` returns the project, the inspector prepares
+a Terraform import plan using `dbtcloud-terraforming` (official dbt Labs tool).
+
+**Check if the tool is available:**
+```bash
+command -v dbtcloud-terraforming &>/dev/null && echo "installed" || echo "NOT FOUND"
+```
+
+If not installed, note it in the profile and suggest:
+```bash
+brew install dbt-labs/dbt-cli/dbtcloud-terraforming
+```
+
+**If available, generate the import plan (read-only — does NOT modify state):**
+
+1. Get the project ID from MCP:
+   ```bash
+   # Already known from Step 2 — e.g., project_id=16911
+   ```
+
+2. Determine the warehouse platform from the project connection (Snowflake/BigQuery/Databricks)
+   and set the Terraform directory:
+   ```
+   terraform/{warehouse}/
+   ```
+
+3. Generate config + import blocks:
+   ```bash
+   dbtcloud-terraforming genimport \
+     --projects {project_id} \
+     --resource-types all \
+     --linked-resource-types dbtcloud_project,dbtcloud_environment \
+     --modern-import-block \
+     --terraform-install-path terraform/{warehouse} \
+     -o terraform/{warehouse}/imported.tf
+   ```
+
+4. **DO NOT run `terraform apply`** — this step only generates files for review
+
+5. Include in the profile:
+   - Path to the generated `imported.tf`
+   - Number of resources discovered
+   - List of resources that require manual credential setup (🔒)
+   - Next steps for the user:
+     ```
+     1. Review terraform/{warehouse}/imported.tf
+     2. Set env vars: export DBT_CLOUD_TOKEN=... (or source .env)
+     3. Run: cd terraform/{warehouse} && terraform plan
+        → Should show 0 changes (import only, no modifications)
+     4. Run: terraform apply (only updates state file, does NOT change dbt Platform)
+     5. Verify: terraform plan → "No changes"
+     ```
+
+**CRITICAL: Never run `terraform apply` in the inspector.** The inspector is read-only.
+The user decides when to import. The import itself is non-destructive — it only
+brings existing resources into the Terraform state without modifying them.
+
 ## Output: project-profile.md
 
 Write the full report to `specs/project-profile.md`:
@@ -238,10 +297,15 @@ Write the full report to `specs/project-profile.md`:
 ## SDD Onboarding Readiness
 {what's needed before the first SDD feature can be built}
 - [ ] project-config.yaml configured
-- [ ] Source schemas use vars
+- [ ] Source schemas use vars (not hardcoded)
+- [ ] Naming conventions consistent (stg_, int_, fct_, dim_)
+- [ ] CI job configured (Slim CI with state:modified+)
 - [ ] Terraform state imported (if already on dbt Platform)
-- [ ] Naming conventions consistent
-- [ ] CI job configured
+      - `dbtcloud-terraforming`: {installed/not found}
+      - Generated import file: `terraform/{warehouse}/imported.tf`
+      - Resources to import: {N}
+      - Manual credential setup needed: {list of 🔒 resources}
+      - Next step: review imported.tf → terraform plan → terraform apply
 ```
 
 ## Critical Rules

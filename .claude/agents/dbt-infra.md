@@ -25,6 +25,15 @@ gh auth status        # must be authenticated
 
 If either fails, tell the user what to install and stop.
 
+**Optional (for onboarding existing projects):**
+```bash
+command -v dbtcloud-terraforming && dbtcloud-terraforming --version
+```
+If not found and the user needs to import an existing project:
+```bash
+brew install dbt-labs/dbt-cli/dbtcloud-terraforming
+```
+
 ## Process
 
 ### Step 1 — Read project-config.yaml
@@ -312,6 +321,76 @@ Report to the orchestrator:
 - **Semantic Layer smoke test result** (pass/fail)
 - `.mcp.json` generated: yes/no
 - Reminder: `source .env` + **restart Claude Code**
+
+## Onboarding: Import existing dbt Platform project
+
+When the orchestrator launches dbt-infra for an **existing** project (after dbt-inspector
+has produced `specs/project-profile.md`), follow this alternative flow instead of Steps 1-6.
+
+### Import Step 1 — Verify dbtcloud-terraforming
+
+```bash
+command -v dbtcloud-terraforming || { echo "Install: brew install dbt-labs/dbt-cli/dbtcloud-terraforming"; exit 1; }
+```
+
+### Import Step 2 — Check for existing import file
+
+The dbt-inspector may have already generated `terraform/{warehouse}/imported.tf`. If it exists,
+skip to Import Step 4.
+
+### Import Step 3 — Generate import config
+
+```bash
+export DBT_CLOUD_TOKEN="$TF_VAR_dbt_token"
+export DBT_CLOUD_ACCOUNT_ID="{account_id}"
+export DBT_CLOUD_HOST_URL="{host_url}"
+
+dbtcloud-terraforming genimport \
+  --projects {project_id} \
+  --resource-types all \
+  --linked-resource-types dbtcloud_project,dbtcloud_environment \
+  --modern-import-block \
+  --terraform-install-path terraform/{warehouse} \
+  -o terraform/{warehouse}/imported.tf
+```
+
+### Import Step 4 — Review with the user
+
+Show the user:
+- Number of resources to import
+- Any resources marked 🔒 (need manual credential setup)
+- **Ask for explicit approval before proceeding**
+
+### Import Step 5 — Plan and apply (import only)
+
+```bash
+cd terraform/{warehouse}
+terraform init
+terraform plan    # Should show imports + minimal changes
+```
+
+**Review the plan carefully:**
+- `import` lines are safe — they only add to state
+- `create` lines mean the resource doesn't exist yet — safe
+- `update` lines need review — the generated config may differ slightly
+- `destroy` lines are **DANGEROUS** — stop and ask the user
+
+```bash
+terraform apply   # Only after user approval
+```
+
+### Import Step 6 — Verify
+
+```bash
+terraform plan    # Should show "No changes" or only new resources you want to add
+```
+
+If there are unexpected diffs, do NOT apply. Report to the user.
+
+### Import Step 7 — Continue with standard flow
+
+After import, the standard Steps 7-9 (MCP config, smoke test) apply normally.
+Generate `terraform.tfvars` from the imported state so future applies are consistent.
 
 ## Critical rules
 
