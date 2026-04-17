@@ -134,7 +134,8 @@ Before launching the subagent, ask the user these source availability questions 
    - **Semantic Layer** (if spec requires metrics) → launch `dbt-semantic`
 5. Each subagent works on its tasks independently
 6. After each task: subagent commits with message referencing the task ID
-7. Update `progress.md` and report to user after each subagent completes
+7. **If a subagent fails:** apply the smart retry protocol (see below)
+8. Update `progress.md` and report to user after each subagent completes
 
 ### Phase 5: Validation (dbt-reviewer)
 
@@ -183,6 +184,34 @@ If yes:
 9. **GATE: Do NOT proceed until user confirms infrastructure is up**
 
 If no: mark Phase 6 as skipped in `progress.md` and close the workflow.
+
+## Smart Retry Protocol
+
+When a subagent fails (build error, test failure, invalid SQL), the orchestrator applies this protocol **before** escalating to the user:
+
+### Auto-retry (1 attempt)
+
+1. Capture the **exact error message** from the subagent's output
+2. Re-launch the **same subagent** with a prompt that includes:
+   - The original task description
+   - The full error message
+   - The file path(s) that caused the failure
+   - Instruction: "Your previous attempt failed with this error. Fix the issue and re-commit."
+3. If the retry succeeds → log in `progress.md` as `⚠️ retry succeeded` and continue
+4. If the retry fails again → **STOP** and escalate to the user with both error messages
+
+### When NOT to retry
+
+- **Spec errors** (Phase 1-3): wrong requirements or design are not fixable by retry — escalate immediately
+- **Permission errors**: missing warehouse grants, wrong credentials — the subagent can't fix these
+- **Infrastructure failures**: Terraform provider errors, API rate limits — transient issues need human judgment
+- **Review findings** (Phase 5): the reviewer reports issues, it doesn't fail — route to Phase 4 for fixes
+
+### Retry log in progress.md
+
+```
+| Phase 4: dbt-developer | ⚠️ retry | 2026-04-17 | T-03 failed: Snowflake correlated aggregate. Auto-fixed on retry. |
+```
 
 ## Iteration & Rollback
 
