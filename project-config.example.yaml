@@ -135,6 +135,16 @@ sources:
 jobs:
   daily_schedule_hours: [6]      # UTC hours for the daily build
 
+# ─── Data Classification ─────────────────────────────────────────────────────
+# Controls how agents classify columns for PII/sensitivity.
+# All projects get: pattern matching (column names) + LLM judgment (context).
+# Data sampling is opt-in — it queries actual data values to detect PII in
+# ambiguous columns (e.g., a "notes" field containing emails).
+classification:
+  enable_sampling: false           # true = agents may run SELECT DISTINCT on dev/staging
+  sampling_environment: "dev"      # dev | staging — NEVER prod
+  sampling_limit: 100              # max rows to sample per column
+
 # ─── Preflight ───────────────────────────────────────────────────────────────
 # Validates warehouse credentials before creating resources.
 # Snowflake: uses snow/snowsql CLI (prevents account lockout)
