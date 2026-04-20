@@ -366,3 +366,16 @@ resource "dbtcloud_semantic_layer_credential_service_token_mapping" "mcp" {
   semantic_layer_credential_id = dbtcloud_databricks_semantic_layer_credential.this[0].id
   service_token_id             = dbtcloud_service_token.mcp.id
 }
+
+# ─── Webhook (dbt-ops alerting) ──────────────────────────────────────────────
+# See terraform/snowflake/main.tf for detailed comments on the design.
+
+resource "dbtcloud_webhook" "ops_alert" {
+  count       = var.webhook_endpoint_url != "" ? 1 : 0
+  name        = "${var.project_name}_ops_alert"
+  description = "Triggers dbt-ops diagnosis on job completion"
+  client_url  = var.webhook_endpoint_url
+  event_types = ["job.run.completed"]
+  job_ids     = []
+  active      = true
+}

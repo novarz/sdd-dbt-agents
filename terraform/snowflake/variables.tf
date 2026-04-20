@@ -164,3 +164,13 @@ variable "daily_job_schedule_hours" {
   type        = list(number)
   default     = [6]
 }
+
+# ─── Webhook (dbt-ops alerting) ──────────────────────────────────────────────
+# Set webhook_endpoint_url to enable automatic failure alerts.
+# The endpoint receives a POST with job run data on failure.
+
+variable "webhook_endpoint_url" {
+  description = "HTTPS endpoint for dbt-ops webhook alerts (empty = disabled)"
+  type        = string
+  default     = ""
+}

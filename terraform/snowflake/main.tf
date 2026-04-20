@@ -396,3 +396,22 @@ resource "dbtcloud_semantic_layer_credential_service_token_mapping" "mcp" {
   semantic_layer_credential_id = dbtcloud_snowflake_semantic_layer_credential.this[0].id
   service_token_id             = dbtcloud_service_token.mcp.id
 }
+
+# ─── Webhook (dbt-ops alerting) ──────────────────────────────────────────────
+# Sends a POST to the configured endpoint on job completion (success or failure).
+# Uses job.run.completed (not job.run.errored) so artifacts and run_results.json
+# are available when the handler queries the API — job.run.errored fires before
+# artifacts are ingested, making diagnosis unreliable.
+# The handler should filter by runStatusCode != 10 (10 = success) to act only on failures,
+# or process all completions for full observability.
+# Only created when webhook_endpoint_url is non-empty.
+
+resource "dbtcloud_webhook" "ops_alert" {
+  count       = var.webhook_endpoint_url != "" ? 1 : 0
+  name        = "${var.project_name}_ops_alert"
+  description = "Triggers dbt-ops diagnosis on job completion"
+  client_url  = var.webhook_endpoint_url
+  event_types = ["job.run.completed"]
+  job_ids     = []  # all jobs in the project
+  active      = true
+}

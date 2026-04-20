@@ -338,6 +338,153 @@ After generating the backlog, present a summary:
 
 If the user picks a story, the orchestrator launches Phase 1 with the story as input.
 
+## Webhook Integration (automated alerting)
+
+The framework can configure a dbt Platform webhook that triggers on job completion.
+This enables automated diagnosis without someone asking "qué ha pasado".
+
+### Architecture
+
+```
+dbt Platform                    Handler (Cloud Function/Lambda)          Claude Code
+─────────────                   ───────────────────────────────          ───────────
+job.run.completed ──POST──→    1. Verify HMAC signature                
+                                2. Check runStatusCode                  
+                                3. If != 10 (not success):              
+                                   a. Wait 60s (artifacts ingestion)    
+                                   b. Verify artifacts available         
+                                   c. Launch claude headless ──────→    dbt-ops Mode A
+                                4. If == 10 (success):                   (diagnosis)
+                                   a. Optional: log to monitoring         │
+                                5. Respond 200 immediately ←──ACK       │
+                                   (before launching claude,             ├→ Slack: diagnosis
+                                    to avoid 10s timeout)                └→ specs/backlog/
+```
+
+### Why job.run.completed (not job.run.errored)
+
+`job.run.errored` fires **before** artifacts are ingested — `run_results.json` and
+`manifest.json` may not be available yet. This makes `get_job_run_error` return
+incomplete data (only truncated logs, no compiled SQL).
+
+`job.run.completed` fires **after** all artifacts are ready. The handler filters
+failures by checking `runStatusCode != 10`.
+
+### Resilient handler pattern
+
+The webhook handler must be resilient to these failure modes:
+
+**1. Artifact delay** — Even with `job.run.completed`, there can be a brief delay
+before artifacts are queryable via the API.
+```
+Solution: Wait 60s after receiving the webhook before querying the API.
+         Retry artifact fetch 3 times with 30s intervals if first attempt returns empty.
+```
+
+**2. Webhook timeout** — dbt Platform expects a response within 10 seconds.
+If your handler takes longer, it counts as a failure.
+```
+Solution: Respond 200 immediately. Process asynchronously (queue, background job,
+          or async function invocation).
+```
+
+**3. Handler failure** — If your endpoint fails 5 consecutive times, dbt Platform
+auto-deactivates the webhook.
+```
+Solution: Always respond 200 even if downstream processing fails.
+          Queue the payload and process later. Monitor webhook health
+          via dbt Platform API.
+```
+
+**4. Duplicate events** — Network retries may deliver the same event twice.
+```
+Solution: Use eventId from the payload as idempotency key. Skip if already processed.
+```
+
+**5. HMAC verification** — Reject payloads that don't match the secret.
+```python
+import hmac, hashlib
+
+def verify_hmac(payload_body, auth_header, secret):
+    expected = hmac.new(secret.encode(), payload_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, auth_header)
+```
+
+### Handler pseudocode
+
+```python
+async def handle_webhook(request):
+    # 1. Respond immediately (avoid 10s timeout)
+    body = await request.body()
+    
+    # 2. Verify HMAC
+    if not verify_hmac(body, request.headers['Authorization'], WEBHOOK_SECRET):
+        return Response(status=401)
+    
+    payload = json.loads(body)
+    event_id = payload['eventId']
+    
+    # 3. Idempotency check
+    if already_processed(event_id):
+        return Response(status=200)
+    mark_processed(event_id)
+    
+    # 4. Respond 200 before processing
+    # (in practice: enqueue and return, or use background task)
+    
+    run_status_code = int(payload['data'].get('runStatusCode', 0))
+    
+    if run_status_code == 10:  # success
+        # Optional: log success metrics
+        return Response(status=200)
+    
+    # 5. Process failure asynchronously
+    asyncio.create_task(diagnose_failure(payload))
+    return Response(status=200)
+
+async def diagnose_failure(payload):
+    run_id = payload['data']['runId']
+    project_name = payload['data']['projectName']
+    job_name = payload['data']['jobName']
+    
+    # 6. Wait for artifacts to be available
+    await asyncio.sleep(60)
+    
+    # 7. Launch Claude Code in headless mode
+    prompt = f"""El job '{job_name}' (run {run_id}) ha fallado en {project_name}.
+    Usa el dbt-ops agent en Mode A para:
+    1. Diagnosticar el error via get_job_run_error(run_id={run_id})
+    2. Clasificar la causa raíz
+    3. Si es transient: retry via retry_job_run(run_id={run_id})
+    4. Si es code/data: generar incident story en specs/backlog/
+    5. Reportar diagnóstico"""
+    
+    subprocess.run(['claude', '-p', prompt, '--allowedTools', 
+                    'mcp__dbt__*', 'Read', 'Write', 'Bash'])
+```
+
+### Terraform setup
+
+The webhook is created by Terraform when `webhook_endpoint_url` is set in tfvars:
+
+```hcl
+# terraform.tfvars
+webhook_endpoint_url = "https://my-cloud-function.cloud/dbt-webhook"
+```
+
+After `terraform apply`, save the HMAC secret:
+```bash
+terraform output -raw webhook_hmac_secret
+# Store this in the handler's environment (e.g., Secret Manager)
+```
+
+### project-config.yaml
+
+```yaml
+webhook:
+  endpoint_url: "https://my-cloud-function.cloud/dbt-webhook"  # empty = disabled
+```
+
 ## Critical Rules
 
 1. **NEVER modify dbt models, tests, or YAML** — that's dbt-developer/tester's job
