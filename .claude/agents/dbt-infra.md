@@ -149,6 +149,7 @@ sources.source_schema_prefix       → source_schema_prefix
 sources.production.source_database → source_database_production (if set)
 sources.production.source_schema_prefix → source_schema_prefix_production (if set)
 jobs.daily_schedule_hours           → daily_job_schedule_hours
+webhook.endpoint_url               → webhook_endpoint_url (if set)
 ```
 
 Never write tokens, passwords, or private keys to `terraform.tfvars` — those come from `.env` via `TF_VAR_*`.

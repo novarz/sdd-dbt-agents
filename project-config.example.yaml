@@ -145,6 +145,14 @@ classification:
   sampling_environment: "dev"      # dev | staging — NEVER prod
   sampling_limit: 100              # max rows to sample per column
 
+# ─── Webhook (dbt-ops automated alerting) ────────────────────────────────────
+# Set endpoint_url to enable automatic failure diagnosis via dbt-ops agent.
+# dbt Platform sends a POST on job completion. Your handler verifies HMAC,
+# filters failures, and launches Claude Code headless for diagnosis.
+# Leave empty to disable.
+webhook:
+  endpoint_url: ""                 # e.g. "https://my-cloud-function.cloud/dbt-webhook"
+
 # ─── Preflight ───────────────────────────────────────────────────────────────
 # Validates warehouse credentials before creating resources.
 # Snowflake: uses snow/snowsql CLI (prevents account lockout)

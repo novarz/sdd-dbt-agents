@@ -198,3 +198,11 @@ variable "daily_job_schedule_hours" {
   type        = list(number)
   default     = [6]
 }
+
+# ─── Webhook (dbt-ops alerting) ──────────────────────────────────────────────
+
+variable "webhook_endpoint_url" {
+  description = "HTTPS endpoint for dbt-ops webhook alerts (empty = disabled)"
+  type        = string
+  default     = ""
+}

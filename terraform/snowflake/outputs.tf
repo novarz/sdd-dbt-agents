@@ -48,3 +48,16 @@ output "mcp_token_uid" {
   description = "UID of the MCP service token"
   value       = dbtcloud_service_token.mcp.uid
 }
+
+# ─── Webhook outputs ─────────────────────────────────────────────────────────
+
+output "webhook_hmac_secret" {
+  description = "HMAC secret for verifying webhook payloads (only shown on first apply)"
+  value       = var.webhook_endpoint_url != "" ? dbtcloud_webhook.ops_alert[0].hmac_secret : ""
+  sensitive   = true
+}
+
+output "webhook_id" {
+  description = "ID of the dbt-ops webhook"
+  value       = var.webhook_endpoint_url != "" ? dbtcloud_webhook.ops_alert[0].webhook_id : ""
+}
