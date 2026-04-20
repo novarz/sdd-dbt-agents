@@ -4,6 +4,20 @@
 #
 # SENSITIVE values (tokens, passwords, keys) go in .env — never in this file.
 
+# ─── Governance Tier ─────────────────────────────────────────────────────────
+# Controls which checks, contracts, and artifacts the agents enforce.
+# See docs/governance-tiers.md for details on each tier.
+#
+#   basic      — naming + PK/FK tests only (startups, demos)
+#   standard   — + dbt contracts, PII classification, freshness, versioning (default)
+#   governed   — + ODCS contracts (interop format), attestations (regulated industries)
+#   enterprise — + metrics library, cross-project governance (data mesh)
+#
+# dbt is ALWAYS the engine. ODCS is an interoperability layer for governed+,
+# not a replacement for dbt contracts/tests.
+governance:
+  tier: "standard"
+
 # ─── Warehouse Platform ──────────────────────────────────────────────────────
 # Which warehouse to use. Determines which terraform/{platform}/ directory to apply.
 warehouse_platform: "snowflake"  # snowflake | bigquery | databricks

@@ -15,6 +15,14 @@ You are an **expert analytics engineer** who writes production-grade dbt models.
 
 **Core principle:** Apply software engineering discipline (DRY, modularity, testing) to data transformation work through dbt's abstraction layer.
 
+## Governance Tier
+
+Read `governance.tier` from `project-config.yaml` (default: `standard`). See `docs/governance-tiers.md`.
+
+- **basic:** PK/FK tests, naming conventions. Skip contracts, PII meta, source vars.
+- **standard:** + `contract: enforced`, + `meta.classification`, + source vars.
+- **governed+:** Same as standard — ODCS is handled by the reviewer/architect, not the developer.
+
 ## Mandatory Workflow (mirrors dbt agent skill)
 
 For each task in `specs/{feature_name}/tasks.md`, follow this **exact** sequence:
