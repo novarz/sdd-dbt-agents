@@ -429,25 +429,22 @@ Templates should be **warehouse-agnostic** — no hardcoded Snowflake/BigQuery r
 When a user starts a conversation, determine which path to follow:
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                         ¿Qué quieres hacer?                                  │
-├─────────────┬─────────────────┬──────────────┬──────────────┬───────────────┤
-│  A) Nuevo   │ B) Existente    │ C) Demo      │ D) Auditar   │ E) Ops /      │
-│  proyecto   │ añadir feature  │              │              │ Producción    │
-├─────────────┼─────────────────┼──────────────┼──────────────┼───────────────┤
-│ Phase 0     │ Phase 0b        │ Copy template│ Phase 0b     │ dbt-ops       │
-│ (scaffold)  │ (inspector)     │ from catalog │ (inspector)  │ (MCP)         │
-│      ↓      │      ↓          │      ↓       │      ↓       │      ↓        │
-│ Phase 1     │ project-profile │ Skip to      │ Recommend.   │ Diagnose /    │
-│ (spec)      │      ↓          │ Phase 2/3/4  │ (done)       │ Health sweep  │
-│      ↓      │ Terraform import│      ↓       │              │      ↓        │
-│ Phase 2-6   │ (if on Platform)│ Phase 2-6    │              │ Backlog:      │
-│             │      ↓          │              │              │ user stories  │
-│             │ Phase 1 → 2-6   │              │              │      ↓        │
-│             │ (new feature)   │              │              │ → Phase 1     │
-│             │                 │              │              │ (feedback     │
-│             │                 │              │              │  loop)        │
-└─────────────┴─────────────────┴──────────────┴──────────────┴───────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                ¿Qué quieres hacer?                                         │
+├─────────────┬──────────────┬────────────┬────────────┬──────────────┬──────────────────────┤
+│  A) Nuevo   │ B) Existente │ C) Demo    │ D) Auditar │ E) Ops /     │ F) Tengo data        │
+│  proyecto   │ + feature    │            │            │ Producción   │ contracts (ODCS)     │
+├─────────────┼──────────────┼────────────┼────────────┼──────────────┼──────────────────────┤
+│ Phase 0     │ Phase 0b     │ Template   │ Phase 0b   │ dbt-ops      │ datacontract export  │
+│ (scaffold)  │ (inspector)  │ catalog    │ (inspector)│ (MCP)        │ → sources + schemas  │
+│      ↓      │      ↓       │      ↓     │      ↓     │      ↓       │      ↓               │
+│ Phase 1     │ profile +    │ Skip to    │ Recommend. │ Diagnose /   │ User provides        │
+│ (spec)      │ TF import    │ Phase 2-4  │ (done)     │ Health sweep │ business questions    │
+│      ↓      │      ↓       │      ↓     │            │      ↓       │      ↓               │
+│ Phase 2-6   │ Phase 1→2-6  │ Phase 2-6  │            │ Backlog →    │ Phase 1 (spec-analyst│
+│             │              │            │            │ Phase 1      │ merges contracts +   │
+│             │              │            │            │              │ stories) → Phase 2-6 │
+└─────────────┴──────────────┴────────────┴────────────┴──────────────┴──────────────────────┘
 ```
 
 ### Route detection
@@ -462,11 +459,13 @@ When a user starts a conversation, determine which path to follow:
 | "cómo está prod" / "health check de producción" | E | dbt-ops (health sweep) |
 | "qué podemos mejorar" / "genera backlog" | E | dbt-ops (improvement stories) |
 | "revisa los runs desde ayer" / "batch check" / "qué ha pasado esta semana" | E | dbt-ops (batch review) |
+| "tengo data contracts" / "tengo ODCS" / "ya tengo los contracts definidos" | F | Contract-first (ODCS → dbt) |
 
 ### If unsure, ask:
 
 > ¿Es un proyecto nuevo desde cero, o ya tienes un proyecto dbt existente?
 > Si ya existe, ¿está desplegado en dbt Platform?
+> ¿Tienes data contracts (ODCS) ya definidos?
 
 This determines:
 - **New + no Platform** → Phase 0 scaffold → full SDD workflow
@@ -474,3 +473,51 @@ This determines:
 - **Existing + on Platform** → Phase 0b inspector with MCP + Terraform import → new features
 - **Existing + local only** → Phase 0b inspector (file-only) → new features
 - **Demo** → template catalog → skip to implementation
+- **Has ODCS contracts** → Route F (contract-first)
+
+### Route F: Contract-First (ODCS → dbt)
+
+**Trigger:** User has existing ODCS data contracts and wants to build a dbt project from them.
+
+**What the contracts provide** (the user does NOT need to specify these):
+- Source schemas (columns, types, constraints)
+- Data quality rules
+- SLAs (freshness, availability)
+- Ownership and classification (PII)
+
+**What the contracts do NOT provide** (the user MUST provide these):
+- Business questions ("¿cuál es el NPL ratio por segmento?")
+- Business rules ("NPL = mora >90 días", "solo préstamos activos")
+- Metric definitions (how KPIs are calculated, what dimensions to slice by)
+- Who consumes the output (dashboards, APIs, exports)
+
+**Flow:**
+
+1. **Import contracts** — generate dbt source YAML from ODCS:
+   ```bash
+   datacontract export --format dbt-sources contract.yaml -o models/staging/_sources.yml
+   datacontract export --format dbt contract.yaml -o models/staging/_schema.yml
+   ```
+   This replaces the source availability questions in Phase 1.
+
+2. **Ask for business requirements** — the orchestrator asks:
+   > Los data contracts definen tus sources. Ahora necesito saber:
+   > 1. ¿Qué preguntas de negocio quieres responder?
+   > 2. ¿Qué métricas necesitas? (KPIs, ratios, agregaciones)
+   > 3. ¿Hay reglas de negocio específicas del dominio?
+   > 4. ¿Quién consume el resultado? (dashboards, APIs, otros equipos)
+
+3. **Launch spec-analyst** with contracts + user stories as input.
+   The spec-analyst merges both into `requirements.md`:
+   - Source Availability section → auto-populated from contracts
+   - User Stories + Business Questions → from the user
+   - Acceptance Criteria → from both (quality rules from contract + business rules from user)
+
+4. **Continue normal SDD flow** → Phase 2 (design) → Phase 3 → Phase 4 → ...
+
+5. **At Phase 5 (review):** if tier is `governed+`, the reviewer validates the
+   implementation against the original ODCS contracts using `datacontract test`.
+
+**Key principle:** The ODCS contracts are an **input** that accelerates Phase 1
+by pre-defining sources. dbt remains the engine — all tests, contracts, and
+enforcement happen in dbt. The ODCS contracts are never executed directly.
