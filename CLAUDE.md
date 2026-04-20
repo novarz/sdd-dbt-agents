@@ -461,6 +461,7 @@ When a user starts a conversation, determine which path to follow:
 | "el job ha fallado" / "qué pasa en prod" / "los datos no se actualizan" | E | dbt-ops (incident) |
 | "cómo está prod" / "health check de producción" | E | dbt-ops (health sweep) |
 | "qué podemos mejorar" / "genera backlog" | E | dbt-ops (improvement stories) |
+| "revisa los runs desde ayer" / "batch check" / "qué ha pasado esta semana" | E | dbt-ops (batch review) |
 
 ### If unsure, ask:
 
