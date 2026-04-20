@@ -34,6 +34,12 @@ The orchestrator launches this agent when:
 - Freshness monitoring
 - Generate improvement backlog
 
+### Batch (catch-up since last check)
+- Review all runs since last inspection
+- Diagnose failures in bulk
+- Detect patterns across runs (recurring failures, degradation trends)
+- Generate consolidated report + stories
+
 ## Process
 
 ### Mode A: Incident Diagnosis
@@ -337,6 +343,129 @@ After generating the backlog, present a summary:
 > Los detalles están en `specs/backlog/`. ¿Quieres que arranque el workflow SDD para alguna?
 
 If the user picks a story, the orchestrator launches Phase 1 with the story as input.
+
+### Mode D: Batch Review (catch-up since last check)
+
+**Trigger:** "revisa los runs desde la última vez" / "qué ha pasado desde ayer" / "batch check" /
+periodic cron via `/loop` or CI.
+
+This mode reviews ALL runs since the last inspection, not just the latest. Useful when:
+- No webhook is configured
+- The user wants a periodic summary (e.g., Monday morning review)
+- Pattern detection across multiple runs (recurring failures)
+
+#### Step 1 — Read last checkpoint
+
+```bash
+cat specs/ops/.last_check 2>/dev/null || echo "no checkpoint — defaulting to 24h ago"
+```
+
+The file contains an ISO timestamp (e.g., `2026-04-19T08:00:00Z`).
+If it doesn't exist, default to 24 hours ago.
+
+#### Step 2 — Fetch all runs since checkpoint
+
+```
+MCP: list_jobs_runs(order_by="-finished_at", limit=100)
+```
+
+Filter runs where `finished_at > last_check_timestamp`. If more than 100 runs,
+paginate with `offset`.
+
+#### Step 3 — Classify runs
+
+Group runs by status:
+
+| Status | Count | Action |
+|--------|-------|--------|
+| Success (10) | N | Check for performance degradation |
+| Error (20) | N | Diagnose each failure |
+| Cancelled (30) | N | Log, no action needed |
+
+#### Step 4 — Diagnose failures in batch
+
+For each failed run:
+```
+MCP: get_job_run_error(run_id={id})
+```
+
+**Deduplicate:** If the same model failed in multiple runs, diagnose once and note
+the recurrence:
+```
+fct_loan_daily_snapshot: failed 3/5 runs since last check
+  → Same error: "Snowflake timeout on warehouse TRANSFORMING"
+  → Pattern: recurring, likely needs warehouse resize or query optimization
+```
+
+#### Step 5 — Detect patterns
+
+Look across all runs (success + failure) for:
+
+- **Recurring failures:** Same model/test failing in >50% of runs → CRITICAL story
+- **Performance degradation:** Compare average duration of recent runs vs historical
+  (use `get_model_performance(num_runs=10)` for context)
+- **Flaky tests:** Tests that pass sometimes and fail sometimes → investigate data issues
+- **Retry storms:** Runs that were retried multiple times → underlying issue not fixed
+- **Schedule gaps:** Expected runs that never happened (missing cron executions)
+
+#### Step 6 — Generate batch report
+
+Write to `specs/ops/batch-report-{date}.md`:
+
+```markdown
+# Batch Review — {last_check} to {now}
+
+## Summary
+- **Period:** {last_check} → {now} ({N} hours)
+- **Total runs:** {N}
+- **Successful:** {N} ({pct}%)
+- **Failed:** {N} ({pct}%)
+- **Cancelled:** {N}
+
+## Failures
+
+| Run ID | Job | Finished | Error | Model | Recurring? |
+|--------|-----|----------|-------|-------|------------|
+| 12345 | Daily Prod | 04-19 02:15 | Timeout | fct_X | Yes (3/5) |
+| 12346 | Slim CI | 04-18 14:30 | Test fail | dim_Y | No |
+
+## Patterns Detected
+
+| Pattern | Severity | Observation | Suggested Story |
+|---------|----------|-------------|-----------------|
+| Recurring timeout on fct_X | CRITICAL | 3/5 runs failed | Resize warehouse or optimize query |
+| dim_Y test flaky | MEDIUM | Passes 60% of time | Investigate data quality |
+| Avg build time ↑ 25% | HIGH | 45s → 56s over 10 runs | Performance review |
+
+## Performance Trends (successful runs)
+
+| Job | Runs | Avg Duration | Trend | Previous Avg |
+|-----|------|-------------|-------|--------------|
+| Daily Prod | 5 | 5m 12s | ↑ 15% | 4m 31s |
+| Slim CI | 8 | 1m 45s | → stable | 1m 42s |
+```
+
+Generate stories from patterns (Mode C logic) and add to `specs/backlog/`.
+
+#### Step 7 — Update checkpoint
+
+```bash
+echo "{current_iso_timestamp}" > specs/ops/.last_check
+git add specs/ops/.last_check specs/ops/batch-report-*.md specs/backlog/*.md
+git commit -m "[SDD-ops] Batch review: {N} runs, {N} failures, {N} stories generated"
+```
+
+#### Using with /loop (periodic execution)
+
+Claude Code's `/loop` skill can run this periodically during an active session:
+```
+/loop 4h "batch check de producción"
+```
+
+For unattended execution (CI/cron), use Claude Code headless:
+```bash
+claude -p "Ejecuta dbt-ops Mode D (batch review desde el último checkpoint)"
+```
 
 ## Webhook Integration (automated alerting)
 
