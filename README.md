@@ -191,11 +191,11 @@ After Phase 6, the `dbt-infra` agent auto-generates `.mcp.json`. For manual setu
 | Branch | Contents |
 |--------|----------|
 | `main` | Framework only: orchestrator, agents, Terraform, scripts |
-| `demo/{feature}` | Output of a full SDD run: SQL models, tests, YAML, Semantic Layer |
+| `projects/{name}` | Output of a full SDD run: SQL models, tests, YAML, Semantic Layer |
 
 ```bash
 # See the difference between framework and a completed project
-git diff main...demo/loan-portfolio-risk
+git diff main...projects/loan-portfolio-risk
 ```
 
 ---
