@@ -95,30 +95,27 @@ resource "dbtcloud_project_repository" "this" {
 # ─── Databricks credentials ──────────────────────────────────────────────────
 
 resource "dbtcloud_databricks_credential" "development" {
-  project_id = dbtcloud_project.this.id
-  adapter_id = dbtcloud_global_connection.databricks.id
-  target_name = "development"
-  token       = var.databricks_token
-  schema      = "${var.schema_prefix}_${var.schema_development}"
-  catalog     = var.databricks_catalog
+  project_id   = dbtcloud_project.this.id
+  adapter_type = "databricks"
+  token        = var.databricks_token
+  schema       = "${var.schema_prefix}_${var.schema_development}"
+  catalog      = var.databricks_catalog
 }
 
 resource "dbtcloud_databricks_credential" "staging" {
-  project_id = dbtcloud_project.this.id
-  adapter_id = dbtcloud_global_connection.databricks.id
-  target_name = "staging"
-  token       = var.databricks_token
-  schema      = "${var.schema_prefix}_${var.schema_staging}"
-  catalog     = var.databricks_catalog
+  project_id   = dbtcloud_project.this.id
+  adapter_type = "databricks"
+  token        = var.databricks_token
+  schema       = "${var.schema_prefix}_${var.schema_staging}"
+  catalog      = var.databricks_catalog
 }
 
 resource "dbtcloud_databricks_credential" "production" {
-  project_id = dbtcloud_project.this.id
-  adapter_id = dbtcloud_global_connection.databricks.id
-  target_name = "production"
-  token       = var.databricks_token
-  schema      = "${var.schema_prefix}_${var.schema_production}"
-  catalog     = var.databricks_catalog
+  project_id   = dbtcloud_project.this.id
+  adapter_type = "databricks"
+  token        = var.databricks_token
+  schema       = "${var.schema_prefix}_${var.schema_production}"
+  catalog      = var.databricks_catalog
 }
 
 # ─── Environments ─────────────────────────────────────────────────────────────
@@ -167,12 +164,13 @@ resource "dbtcloud_environment" "production" {
 # ─── Job: Daily Build (Staging) ───────────────────────────────────────────────
 
 resource "dbtcloud_job" "daily" {
-  project_id     = dbtcloud_project.this.id
-  environment_id = dbtcloud_environment.staging.environment_id
-  name           = "Daily Build"
-  execute_steps  = ["dbt build"]
-  dbt_version    = var.dbt_version
-  generate_docs  = true
+  project_id           = dbtcloud_project.this.id
+  environment_id       = dbtcloud_environment.staging.environment_id
+  name                 = "Daily Build"
+  execute_steps        = ["dbt build"]
+  dbt_version          = var.dbt_version
+  generate_docs        = true
+  force_node_selection = true
 
   schedule_type  = "every_day"
   schedule_hours = var.daily_job_schedule_hours
@@ -188,12 +186,13 @@ resource "dbtcloud_job" "daily" {
 # ─── Job: Daily Build (Production) ───────────────────────────────────────────
 
 resource "dbtcloud_job" "daily_prod" {
-  project_id     = dbtcloud_project.this.id
-  environment_id = dbtcloud_environment.production.environment_id
-  name           = "Daily Build (Production)"
-  execute_steps  = ["dbt source freshness", "dbt build --exclude resource_type:unit_test"]
-  dbt_version    = var.dbt_version
-  generate_docs  = true
+  project_id           = dbtcloud_project.this.id
+  environment_id       = dbtcloud_environment.production.environment_id
+  name                 = "Daily Build (Production)"
+  execute_steps        = ["dbt build --exclude resource_type:unit_test"]
+  dbt_version          = var.dbt_version
+  generate_docs        = true
+  force_node_selection = true
 
   schedule_type  = "every_day"
   schedule_hours = var.daily_job_schedule_hours
@@ -211,9 +210,10 @@ resource "dbtcloud_job" "daily_prod" {
 resource "dbtcloud_job" "slim_ci" {
   project_id     = dbtcloud_project.this.id
   environment_id = dbtcloud_environment.staging.environment_id
-  name           = "Slim CI"
-  execute_steps  = ["dbt build --select state:modified+"]
-  dbt_version    = var.dbt_version
+  name                 = "Slim CI"
+  execute_steps        = ["dbt build --select state:modified+"]
+  dbt_version          = var.dbt_version
+  force_node_selection = true
 
   # Defer to the staging environment state so Slim CI only runs modified nodes
   deferring_environment_id = dbtcloud_environment.staging.environment_id
@@ -298,11 +298,11 @@ resource "dbtcloud_databricks_semantic_layer_credential" "this" {
   }
 
   credential = {
-    project_id = dbtcloud_project.this.id
-    adapter_id = dbtcloud_global_connection.databricks.id
-    token      = var.databricks_token
-    schema     = "${var.schema_prefix}_${var.schema_production}"
-    catalog    = var.databricks_catalog
+    project_id   = dbtcloud_project.this.id
+    adapter_type = "databricks"
+    token        = var.databricks_token
+    schema       = "${var.schema_prefix}_${var.schema_production}"
+    catalog      = var.databricks_catalog
   }
 }
 
