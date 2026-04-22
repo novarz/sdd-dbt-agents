@@ -7,8 +7,8 @@ with source as (
 renamed as (
 
     select
-        cast(payment_id as varchar)                                as payment_id,
-        cast(loan_id as varchar)                                   as loan_id,
+        cast(payment_id as string)                                as payment_id,
+        cast(loan_id as string)                                   as loan_id,
         cast(due_date as date)                                     as due_date,
         cast(payment_date as date)                                 as payment_date,
         cast(amount_due as numeric)                                as amount_due,
@@ -16,7 +16,7 @@ renamed as (
         cast(principal_component as numeric)                       as principal_component,
         cast(interest_component as numeric)                        as interest_component,
         coalesce(cast(days_past_due as integer), 0)                as days_past_due,
-        cast(payment_status as varchar)                            as payment_status,
+        cast(payment_status as string)                            as payment_status,
         cast(loaded_at as timestamp)                               as loaded_at
 
     from source

@@ -59,8 +59,8 @@ seeds:
         ifrs9_stage: integer
         provision_rate: numeric
     core_banking:
-      +database: "{{ var('source_database') }}"
-      +schema: "{{ var('source_schema_prefix') }}_core_banking"
+      +database: "{{ env_var('DBT_SOURCE_DATABASE', 'ANALYTICS') }}"
+      +schema: "{{ env_var('DBT_SOURCE_SCHEMA_PREFIX', 'dbt_sduran') }}_core_banking"
     reference_data:
-      +database: "{{ var('source_database') }}"
-      +schema: "{{ var('source_schema_prefix') }}_reference_data"
+      +database: "{{ env_var('DBT_SOURCE_DATABASE', 'ANALYTICS') }}"
+      +schema: "{{ env_var('DBT_SOURCE_SCHEMA_PREFIX', 'dbt_sduran') }}_reference_data"
