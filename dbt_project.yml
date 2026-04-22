@@ -55,9 +55,9 @@ seeds:
   loan_portfolio_risk:
     ifrs9_provision_rates:
       +column_types:
-        delinquency_bucket: varchar
+        delinquency_bucket: string
         ifrs9_stage: integer
-        provision_rate: numeric
+        provision_rate: double
     core_banking:
       +database: "{{ env_var('DBT_SOURCE_DATABASE', 'ANALYTICS') }}"
       +schema: "{{ env_var('DBT_SOURCE_SCHEMA_PREFIX', 'dbt_sduran') }}_core_banking"
