@@ -279,7 +279,7 @@ models:
           - not_null
       - name: max_days_past_due
         description: "Maximo dias de mora en la fecha del snapshot"
-        data_type: long
+        data_type: int
         constraints:
           - type: not_null
         tests:
@@ -297,7 +297,7 @@ models:
                 values: ['current', '1_30', '31_60', '61_90', 'over_90']
       - name: ifrs9_stage
         description: "IFRS 9 stage: 1 (performing), 2 (underperforming), 3 (non-performing)"
-        data_type: long
+        data_type: int
         constraints:
           - type: not_null
         tests:
@@ -412,7 +412,7 @@ models:
         data_type: double
       - name: days_past_due
         description: "Dias de retraso del pago"
-        data_type: long
+        data_type: int
         constraints:
           - type: not_null
         tests:

@@ -5,7 +5,7 @@
 {{
     config(
         materialized='incremental',
-        incremental_strategy='delete+insert',
+        incremental_strategy='merge',
         unique_key=['loan_id', 'snapshot_date'],
         on_schema_change='append_new_columns'
     )

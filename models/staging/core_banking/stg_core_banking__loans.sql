@@ -13,17 +13,17 @@ renamed as (
         cast(product_type as string)        as product_type,
         cast(origination_date as date)       as origination_date,
         cast(maturity_date as date)          as maturity_date,
-        cast(original_amount as numeric)     as original_amount,
-        cast(outstanding_balance as numeric) as outstanding_balance,
-        cast(interest_rate as numeric)       as interest_rate,
-        cast(collateral_value as numeric)    as collateral_value,
+        cast(original_amount as double)     as original_amount,
+        cast(outstanding_balance as double) as outstanding_balance,
+        cast(interest_rate as double)       as interest_rate,
+        cast(collateral_value as double)    as collateral_value,
         cast(loan_status as string)         as loan_status,
         cast(risk_rating as string)         as risk_rating,
         cast(loaded_at as timestamp)         as loaded_at,
 
         -- Loan-to-value: meaningful only for mortgages with collateral
-        cast(outstanding_balance as numeric)
-            / nullif(cast(collateral_value as numeric), 0) as loan_to_value
+        cast(outstanding_balance as double)
+            / nullif(cast(collateral_value as double), 0) as loan_to_value
 
     from source
     where loan_status is not null
