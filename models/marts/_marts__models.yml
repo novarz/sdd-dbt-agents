@@ -175,22 +175,22 @@ models:
         data_type: date
       - name: original_amount
         description: "Importe original del prestamo en EUR"
-        data_type: numeric
+        data_type: double
         constraints:
           - type: not_null
         tests:
           - not_null
       - name: interest_rate
         description: "Tipo de interes anual"
-        data_type: numeric
+        data_type: double
       - name: collateral_value
         description: "Valor de la garantia en EUR. NULL para prestamos sin colateral."
-        data_type: numeric
+        data_type: double
       - name: loan_to_value
         description: >
           Ratio saldo vivo / valor garantia. NULL para prestamos sin colateral.
           Solo relevante para hipotecas (product_type = 'mortgage').
-        data_type: numeric
+        data_type: double
       - name: loan_status
         description: "Estado del prestamo: active, closed, defaulted, restructured"
         data_type: string
@@ -272,14 +272,14 @@ models:
         data_type: string
       - name: outstanding_balance
         description: "Saldo vivo del prestamo en EUR en la fecha del snapshot"
-        data_type: numeric
+        data_type: double
         constraints:
           - type: not_null
         tests:
           - not_null
       - name: max_days_past_due
         description: "Maximo dias de mora en la fecha del snapshot"
-        data_type: integer
+        data_type: long
         constraints:
           - type: not_null
         tests:
@@ -297,7 +297,7 @@ models:
                 values: ['current', '1_30', '31_60', '61_90', 'over_90']
       - name: ifrs9_stage
         description: "IFRS 9 stage: 1 (performing), 2 (underperforming), 3 (non-performing)"
-        data_type: integer
+        data_type: long
         constraints:
           - type: not_null
         tests:
@@ -308,14 +308,14 @@ models:
                 values: [1, 2, 3]
       - name: provision_rate
         description: "Tasa de provision IFRS 9 aplicada"
-        data_type: numeric
+        data_type: double
         constraints:
           - type: not_null
         tests:
           - not_null
       - name: provision_amount
         description: "Importe provisionado en EUR: outstanding_balance * provision_rate"
-        data_type: numeric
+        data_type: double
         constraints:
           - type: not_null
         tests:
@@ -396,23 +396,23 @@ models:
         data_type: date
       - name: amount_due
         description: "Importe previsto del pago en EUR"
-        data_type: numeric
+        data_type: double
         constraints:
           - type: not_null
         tests:
           - not_null
       - name: amount_paid
         description: "Importe real pagado en EUR. NULL si no se ha pagado."
-        data_type: numeric
+        data_type: double
       - name: principal_component
         description: "Componente de principal del pago en EUR"
-        data_type: numeric
+        data_type: double
       - name: interest_component
         description: "Componente de intereses del pago en EUR"
-        data_type: numeric
+        data_type: double
       - name: days_past_due
         description: "Dias de retraso del pago"
-        data_type: integer
+        data_type: long
         constraints:
           - type: not_null
         tests:
