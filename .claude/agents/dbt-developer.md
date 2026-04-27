@@ -204,6 +204,31 @@ Ephemeral models have no persistent relation, so unit tests that reference them 
 dbt build --exclude resource_type:unit_test
 ```
 
+### `var()` cannot be used in `dbt_project.yml` configuration sections
+`dbt_project.yml` is parsed before Jinja variables are resolved. Any `{{ var('x') }}` in
+seeds config, models config, or any project-level config section will fail with:
+```
+Required var 'x' not found in config: Vars supplied to <Configuration> = {}
+```
+
+This is a **dbt architectural limitation** affecting all engines (Core, Fusion, Cloud CLI),
+documented in [dbt-core#4873](https://github.com/dbt-labs/dbt-core/issues/4873).
+Fusion fails more explicitly; Core may be more permissive depending on version.
+
+**Use `env_var()` instead** — environment variables are resolved from the OS at any time:
+```yaml
+# dbt_project.yml
+seeds:
+  my_project:
+    my_seed:
+      +database: "{{ env_var('DBT_SOURCE_DATABASE', 'ANALYTICS') }}"   # ✅
+      # +database: "{{ var('source_database') }}"                       # ❌ fails at parse time
+```
+
+`env_var()` with a default value works everywhere, including in `dbt_project.yml`.
+Set the env var via dbt Platform environment variables (Terraform `dbtcloud_environment_variable`)
+or locally via `.env`.
+
 ## Model Versioning
 
 When the `design.md` specifies a breaking change on a public mart, implement dbt model versions:
