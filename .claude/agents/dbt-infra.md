@@ -263,26 +263,21 @@ Check `project-config.yaml` → `mcp.auto_generate`. If `true`, configure `.mcp.
    echo 'export DBT_MCP_TOKEN="'"$MCP_TOKEN"'"' >> ../../.env
    ```
 
-3. Parse `dbt_platform.host_url` from `project-config.yaml` to extract MCP env vars.
+3. Parse `dbt_platform.host_url` from `project-config.yaml` to get `DBT_HOST`.
 
-   **Multi-cell accounts** (most common): the host URL has an account prefix like `pk455.eu1.dbt.com/api`.
-   Split it into `DBT_HOST` (region only) and `MULTICELL_ACCOUNT_PREFIX`:
+   Strip the `/api` suffix. Use the **full hostname including the account prefix** — dbt-mcp ≥ 1.14.0
+   auto-discovers the prefix internally:
    ```
-   https://pk455.eu1.dbt.com/api → DBT_HOST=eu1.dbt.com, MULTICELL_ACCOUNT_PREFIX=pk455
-   ```
-
-   **Single-cell accounts**: the host URL has no prefix, e.g. `cloud.getdbt.com/api`.
-   Use the hostname directly:
-   ```
-   https://cloud.getdbt.com/api → DBT_HOST=cloud.getdbt.com (no MULTICELL_ACCOUNT_PREFIX)
+   https://pk455.eu1.dbt.com/api → DBT_HOST=pk455.eu1.dbt.com
+   https://cloud.getdbt.com/api  → DBT_HOST=cloud.getdbt.com
    ```
 
-   **Detection rule**: if the hostname has 3+ dot-separated segments before the TLD
-   (e.g., `pk455.eu1.dbt.com`), the first segment is the account prefix.
+   > `MULTICELL_ACCOUNT_PREFIX` is legacy (deprecated in dbt-mcp ≥ 1.14.0). Do NOT add it.
+   > From v1.14.0, dbt-mcp auto-fetches the prefix from dbt Platform when given the full hostname.
 
-4. Write `.mcp.json` (gitignored). The token is referenced via env var — not hardcoded:
+4. Write `.mcp.json` (gitignored). Two modes available — choose based on use case:
 
-   **Multi-cell example:**
+   **Option A — Local MCP** (recommended for Claude Code — supports dbt CLI tools):
    ```json
    {
      "mcpServers": {
@@ -290,39 +285,47 @@ Check `project-config.yaml` → `mcp.auto_generate`. If `true`, configure `.mcp.
          "command": "uvx",
          "args": ["dbt-mcp"],
          "env": {
-           "DBT_HOST": "{region}.dbt.com",
-           "MULTICELL_ACCOUNT_PREFIX": "{account_prefix}",
+           "DBT_HOST": "{full_hostname}",
            "DBT_TOKEN": "${DBT_MCP_TOKEN}",
            "DBT_PROD_ENV_ID": "{production_environment_id}"
+         }
+       }
+     }
+   }
+   ```
+   Examples: `"DBT_HOST": "pk455.eu1.dbt.com"` (multi-cell) / `"DBT_HOST": "cloud.getdbt.com"` (single-cell)
+
+   **Option B — Remote MCP** (for cloud-hosted tools like Databricks Genie Code — no local install):
+   ```json
+   {
+     "mcpServers": {
+       "dbt": {
+         "type": "http",
+         "url": "https://{full_hostname}/api/ai/v1/mcp/",
+         "headers": {
+           "Authorization": "Token ${DBT_MCP_TOKEN}",
+           "x-dbt-prod-environment-id": "{production_environment_id}",
+           "x-dbt-user-id": "{dbt_user_id}"
          }
        }
      }
    }
    ```
 
-   **Single-cell example:**
-   ```json
-   {
-     "mcpServers": {
-       "dbt": {
-         "command": "uvx",
-         "args": ["dbt-mcp"],
-         "env": {
-           "DBT_HOST": "cloud.getdbt.com",
-           "DBT_TOKEN": "${DBT_MCP_TOKEN}",
-           "DBT_PROD_ENV_ID": "{production_environment_id}"
-         }
-       }
-     }
-   }
-   ```
+   | Mode | dbt CLI tools | Discovery | Semantic Layer | Use case |
+   |------|-------------|-----------|---------------|---------|
+   | Local | ✅ | ✅ | ✅ | Claude Code, local agents |
+   | Remote | ❌ | ✅ | ✅ | Genie Code, Cursor, web tools |
+
+   For Genie Code: create a Unity Catalog HTTP connection pointing to the remote MCP URL,
+   then register it in Genie Code as an external MCP server. Genie Code requires the
+   `x-dbt-prod-environment-id` header. The token must have `semantic_layer_only` + `metadata_only`.
 
    The MCP service token has: `metadata_only` + `semantic_layer_only` + `job_admin` + `developer`.
-   This gives agents access to discovery API, semantic layer queries, and job execution.
 
    > **CRITICAL**: Use `DBT_PROD_ENV_ID` (not `DBT_PROD_ENVIRONMENT_ID`).
-   > For multi-cell accounts, do NOT include the account prefix in `DBT_HOST` —
-   > use `MULTICELL_ACCOUNT_PREFIX` separately. Getting this wrong breaks Semantic Layer queries.
+   > Use the **full hostname** in `DBT_HOST` — do NOT split prefix/host or add `MULTICELL_ACCOUNT_PREFIX`.
+   > `MULTICELL_ACCOUNT_PREFIX` is deprecated since dbt-mcp v1.14.0.
 
 5. Tell the user to run `source .env` and **restart Claude Code** to load the MCP server.
 
@@ -426,6 +429,36 @@ If there are unexpected diffs, do NOT apply. Report to the user.
 
 After import, the standard Steps 7-9 (MCP config, smoke test) apply normally.
 Generate `terraform.tfvars` from the imported state so future applies are consistent.
+
+## Databricks Genie Code Integration (optional)
+
+**Genie Code** (not regular Genie Chat) supports external MCP servers. It runs as SaaS in
+Databricks — use the **remote MCP** endpoint, not the local `uvx dbt-mcp`.
+
+**Setup:**
+
+1. Get the remote MCP URL: `https://{full_hostname}/api/ai/v1/mcp/`
+   (e.g., `https://pk455.eu1.dbt.com/api/ai/v1/mcp/`)
+
+2. In Databricks: create a Unity Catalog HTTP connection:
+   ```sql
+   CREATE CONNECTION dbt_mcp
+   TYPE HTTP
+   URL 'https://pk455.eu1.dbt.com/api/ai/v1/mcp/'
+   WITH CREDENTIALS (token = '<DBT_MCP_TOKEN>');
+   ```
+
+3. Register it in Genie Code as an external MCP server, passing headers:
+   - `Authorization: Token <token>`
+   - `x-dbt-prod-environment-id: <prod_env_id>`
+
+**Capabilities via remote MCP in Genie Code:**
+- ✅ Query metrics via Semantic Layer (NPL ratio, EAD, provisions, etc.)
+- ✅ Explore models, sources, lineage via Discovery API
+- ❌ dbt CLI commands (build, run, test) — remote MCP only, no local execution
+
+**For Claude Code (this framework):** always use local MCP (Option A in Step 7).
+Genie Code integration is for business users who want natural language access to dbt metrics.
 
 ## Critical rules
 
