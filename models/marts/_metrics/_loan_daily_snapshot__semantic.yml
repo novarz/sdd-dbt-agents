@@ -52,6 +52,14 @@ semantic_models:
         description: "Indicador de prestamo non-performing (delinquency_bucket = 'over_90')."
         type: categorical
         expr: "cast(is_npl as varchar)"
+      - name: region
+        description: "Region geografica de la sucursal del cliente."
+        type: categorical
+        expr: region
+      - name: region_concentration_flag
+        description: "Flag de concentracion regional: HIGH cuando la region supera el 20% del portfolio total, NORMAL en caso contrario."
+        type: categorical
+        expr: region_concentration_flag
 
     measures:
       - name: total_outstanding_balance

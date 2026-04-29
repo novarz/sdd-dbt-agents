@@ -34,9 +34,25 @@ dim_customer as (
     select
         customer_id,
         branch_id,
+        region,
         segment
 
     from {{ ref('dim_customer') }}
+
+),
+
+region_exposure as (
+
+    -- CA-05: flag regions where outstanding exposure > 20% of total portfolio
+    select
+        dc.region,
+        sum(p.outstanding_balance)                              as region_balance,
+        sum(sum(p.outstanding_balance)) over ()                 as total_balance,
+        sum(p.outstanding_balance) / sum(sum(p.outstanding_balance)) over ()
+                                                                as region_pct
+    from provisions p
+    inner join dim_customer dc on p.customer_id = dc.customer_id
+    group by dc.region
 
 ),
 
@@ -47,6 +63,7 @@ snapshot_base as (
         cast(current_date as date)              as snapshot_date,
         p.customer_id,
         dc.branch_id,
+        dc.region,
         p.product_type,
         dc.segment,
         p.outstanding_balance,
@@ -58,11 +75,17 @@ snapshot_base as (
         case
             when p.delinquency_bucket = 'over_90' then true
             else false
-        end                                     as is_npl
+        end                                     as is_npl,
+        case
+            when re.region_pct > 0.20            then 'HIGH'
+            else 'NORMAL'
+        end                                     as region_concentration_flag
 
     from provisions p
     left join dim_customer dc
         on p.customer_id = dc.customer_id
+    left join region_exposure re
+        on dc.region = re.region
 
     {% if is_incremental() %}
     -- In incremental mode, only process loans whose snapshot_date equals today.
