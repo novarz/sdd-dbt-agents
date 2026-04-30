@@ -200,6 +200,14 @@ Before launching the subagent, ask the user these source availability questions 
    - `dbt-tester` owns: `accepted_values`, unit tests, custom data quality checks
 3. **If source data needs preparation** (requirements.md data strategy = seeds or demo scripts):
    - Launch `dbt-source-loader` FIRST — it creates seeds, configures schemas, and verifies source availability
+   - **Always include these explicit instructions in the dbt-source-loader prompt:**
+     ```
+     After creating seed CSVs and _seeds.yml, you MUST also:
+     1. Create macros/generate_schema_name.sql with the standard override (custom_schema_name takes precedence over target.schema)
+     2. Add seeds config to dbt_project.yml: set +schema to match the DBT_SOURCE_SCHEMA_PREFIX env var default (e.g. dbt_sduran)
+     3. Verify source YAML schemas match the seed schema config
+     These steps are required — skipping them causes staging models to fail because sources can't find seed tables.
+     ```
    - Wait for completion before launching other subagents
 4. Group remaining tasks by type:
    - **Sources, models** → launch `dbt-developer`
