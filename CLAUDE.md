@@ -108,6 +108,50 @@ This phase is for **existing projects** — not new ones. Triggers:
 
 The profile is reusable: agents in Phase 4 can read `specs/project-profile.md` to understand existing conventions, naming patterns, and what not to break.
 
+### Phase 0c: Create Target Demo Repo (orchestrator)
+
+**Trigger:** Route G — user wants to generate a demo in a new external repo.
+
+This phase runs BEFORE Phase 1. It creates the target repo and sets `TARGET_REPO_PATH` for the rest of the session.
+
+1. Ask the user:
+   > 1. ¿En qué GitHub org/user quieres el repo? ¿Qué nombre le ponemos?
+   > 2. ¿Qué warehouse vas a usar? (Snowflake / Databricks / BigQuery)
+   > 3. ¿Cuál es tu dbt Platform account ID y host URL? (ej. `pk455.eu1.dbt.com`)
+
+2. Create the repo and clone it:
+   ```bash
+   gh repo create {org}/{name} --private
+   git clone https://github.com/{org}/{name}.git /tmp/{name}
+   export TARGET_REPO_PATH=/tmp/{name}
+   ```
+
+3. Scaffold the dbt project inside `TARGET_REPO_PATH` (same logic as Phase 0):
+   - Create `dbt_project.yml`, `packages.yml`, folder structure
+   - Warehouse-agnostic: use `env_var()` for all connection values
+
+4. Copy the spec template into `TARGET_REPO_PATH`:
+   ```bash
+   cp -r specs/templates/{vertical}/ $TARGET_REPO_PATH/specs/
+   ```
+
+5. Initial commit:
+   ```bash
+   git -C $TARGET_REPO_PATH add -A
+   git -C $TARGET_REPO_PATH commit -m "chore: scaffold dbt project"
+   git -C $TARGET_REPO_PATH push origin main
+   ```
+
+6. From this point forward, **every subagent prompt must include**:
+   ```
+   Target project directory: {TARGET_REPO_PATH}
+   All file reads/writes, dbt CLI commands, and git operations must use {TARGET_REPO_PATH}.
+   Use `git -C {TARGET_REPO_PATH}` for git commands.
+   Use `dbt --project-dir {TARGET_REPO_PATH}` for dbt commands.
+   ```
+
+> `TARGET_REPO_PATH` is a session variable. Set it once in Phase 0c and inject it into every subsequent subagent prompt.
+
 ### Phase 1: Requirements (spec-analyst)
 
 **Trigger:** User describes a business need in natural language.
@@ -166,6 +210,15 @@ Before launching the subagent, ask the user these source availability questions 
 7. **If a subagent fails:** apply the smart retry protocol (see below)
 8. Update `progress.md` and report to user after each subagent completes
 
+> **When `TARGET_REPO_PATH` is set (Route G):** inject the following into EVERY subagent prompt in this phase:
+> ```
+> Target project directory: {TARGET_REPO_PATH}
+> All file reads/writes, dbt CLI commands, and git operations must use {TARGET_REPO_PATH}.
+> Use `git -C {TARGET_REPO_PATH}` for git commands.
+> Use `dbt --project-dir {TARGET_REPO_PATH}` for dbt commands.
+> Specs are at {TARGET_REPO_PATH}/specs/
+> ```
+
 ### Phase 5: Validation (dbt-reviewer)
 
 **Trigger:** All implementation subagents complete.
@@ -205,12 +258,20 @@ If yes:
 1. Run the preflight check above
 2. Validate `project-config.yaml`: `./scripts/validate-config.sh` — fix any errors before proceeding
 3. Ask the user to run `source .env` in their terminal — credentials must be exported as env vars, **never shared in chat**
-4. Launch `dbt-infra` subagent with `mode: "bypassPermissions"` and path to `specs/{feature_name}/requirements.md` — bypass is required so the subagent can write files and run Terraform without repeated permission prompts
-5. Subagent provisions: dbt Platform project, connection, environments (dev/staging/prod), Slim CI job, daily build jobs, Semantic Layer, and `.mcp.json`
-6. Before triggering the first production job run, verify source tables exist in the warehouse. If not, resolve according to the data strategy defined in `requirements.md` (load seeds, run demo scripts, or ask user to confirm external load)
-7. After first successful job run: re-run `terraform apply -var="enable_semantic_layer=true"` to activate Semantic Layer
-8. Update `progress.md`: Phase 6 complete — include dbt Platform project URL
-9. **GATE: Do NOT proceed until user confirms infrastructure is up**
+4. **When `TARGET_REPO_PATH` is set (Route G):** push all committed changes before provisioning:
+   ```bash
+   git -C $TARGET_REPO_PATH push origin main
+   ```
+   Then pass these additional inputs to `dbt-infra`:
+   - `git_remote_url = https://github.com/{org}/{name}.git`
+   - `git_branch = main`
+   - `target_repo_path = {TARGET_REPO_PATH}` (so dbt-infra writes `.mcp.json` to the correct location)
+5. Launch `dbt-infra` subagent with `mode: "bypassPermissions"` and path to `specs/{feature_name}/requirements.md` — bypass is required so the subagent can write files and run Terraform without repeated permission prompts
+6. Subagent provisions: dbt Platform project, connection, environments (dev/staging/prod), Slim CI job, daily build jobs, Semantic Layer, and `.mcp.json`
+7. Before triggering the first production job run, verify source tables exist in the warehouse. If not, resolve according to the data strategy defined in `requirements.md` (load seeds, run demo scripts, or ask user to confirm external load)
+8. After first successful job run: re-run `terraform apply -var="enable_semantic_layer=true"` to activate Semantic Layer
+9. Update `progress.md`: Phase 6 complete — include dbt Platform project URL
+10. **GATE: Do NOT proceed until user confirms infrastructure is up**
 
 If no: mark Phase 6 as skipped in `progress.md` and close the workflow.
 
@@ -397,20 +458,29 @@ Pre-built spec templates for common verticals. The user picks a template, the or
 
 ### How it works
 
-**Trigger:** User says "quiero montar la demo de banking" or "dame el template de loan risk".
+**Trigger:** Route G — user says "quiero crear una demo de banking" / "genera una demo de loan risk para [cliente]".
 
-1. List available templates from `specs/templates/`
-2. Copy the template to `specs/{feature_name}/`:
-   ```bash
-   cp -r specs/templates/{template}/ specs/{feature_name}/
-   ```
-3. **Determine starting phase** based on what the template includes:
+This is Route G: the framework generates a new external repo with a fully implemented dbt project.
+
+1. **Phase 0c:** Create the target repo, clone it, scaffold, copy the spec template (see Phase 0c above). Sets `TARGET_REPO_PATH`.
+
+2. **Determine starting phase** based on what the template includes:
    - Only `requirements.md` → start at **Phase 2** (design) — skip Phase 1
    - `requirements.md` + `design.md` → start at **Phase 3** (planning) — skip 1-2
    - All three (`requirements.md` + `design.md` + `tasks.md`) → start at **Phase 4** (implementation) — skip 1-3
-4. Create `progress.md` and mark skipped phases as `📋 from template`
-5. Present the pre-built specs to the user for a quick review before proceeding
-6. **GATE: User must approve** — templates save time but the user still validates
+
+3. Create `$TARGET_REPO_PATH/specs/progress.md` and mark skipped phases as `📋 from template`
+
+4. Present the pre-built specs to the user for a quick review before proceeding
+
+5. **GATE: User must approve** — templates save time but the user still validates
+
+6. Run Phase 4 → Phase 5 → Phase 6 with `TARGET_REPO_PATH` injected into every subagent prompt.
+
+7. At the end, the user has:
+   - A new GitHub repo with all dbt models implemented
+   - A running dbt Platform project pointing to that repo
+   - Advanced CI configured for demo branches
 
 ### Adding new templates
 
@@ -429,22 +499,20 @@ Templates should be **warehouse-agnostic** — no hardcoded Snowflake/BigQuery r
 When a user starts a conversation, determine which path to follow:
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                ¿Qué quieres hacer?                                         │
-├─────────────┬──────────────┬────────────┬────────────┬──────────────┬──────────────────────┤
-│  A) Nuevo   │ B) Existente │ C) Demo    │ D) Auditar │ E) Ops /     │ F) Tengo data        │
-│  proyecto   │ + feature    │            │            │ Producción   │ contracts (ODCS)     │
-├─────────────┼──────────────┼────────────┼────────────┼──────────────┼──────────────────────┤
-│ Phase 0     │ Phase 0b     │ Template   │ Phase 0b   │ dbt-ops      │ datacontract export  │
-│ (scaffold)  │ (inspector)  │ catalog    │ (inspector)│ (MCP)        │ → sources + schemas  │
-│      ↓      │      ↓       │      ↓     │      ↓     │      ↓       │      ↓               │
-│ Phase 1     │ profile +    │ Skip to    │ Recommend. │ Diagnose /   │ User provides        │
-│ (spec)      │ TF import    │ Phase 2-4  │ (done)     │ Health sweep │ business questions    │
-│      ↓      │      ↓       │      ↓     │            │      ↓       │      ↓               │
-│ Phase 2-6   │ Phase 1→2-6  │ Phase 2-6  │            │ Backlog →    │ Phase 1 (spec-analyst│
-│             │              │            │            │ Phase 1      │ merges contracts +   │
-│             │              │            │            │              │ stories) → Phase 2-6 │
-└─────────────┴──────────────┴────────────┴────────────┴──────────────┴──────────────────────┘
+┌──────────┬──────────┬──────────┬──────────┬──────────┬──────────┬──────────────────────┐
+│ A) Nuevo │ B) Exist.│ C) Demo  │ D) Audit │ E) Ops / │ F) ODCS  │ G) Generar demo      │
+│ proyecto │+ feature │ (en este │          │ Prod     │ contracts│ (repo nuevo)         │
+│          │          │ repo)    │          │          │          │                      │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────────────────┤
+│ Phase 0  │ Phase 0b │ Template │ Phase 0b │ dbt-ops  │ contract │ Phase 0c             │
+│(scaffold)│(inspector│ catalog  │(inspector│ (MCP)    │ export   │ (crear repo externo) │
+│    ↓     │    ↓     │    ↓     │    ↓     │    ↓     │    ↓     │    ↓                 │
+│ Phase 1  │profile + │ Skip to  │Recommend.│Diagnose /│User gives│ Skip to              │
+│  (spec)  │TF import │Phase 2-4 │  (done)  │Health sw.│biz quest.│ Phase 2-4            │
+│    ↓     │    ↓     │    ↓     │          │    ↓     │    ↓     │    ↓                 │
+│Phase 2-6 │Phase1→2-6│Phase 2-6 │          │Backlog → │Phase1→2-6│Phase 4-6             │
+│          │          │          │          │ Phase 1  │          │(TARGET_REPO_PATH)    │
+└──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴──────────────────────┘
 ```
 
 ### Route detection
@@ -460,6 +528,7 @@ When a user starts a conversation, determine which path to follow:
 | "qué podemos mejorar" / "genera backlog" | E | dbt-ops (improvement stories) |
 | "revisa los runs desde ayer" / "batch check" / "qué ha pasado esta semana" | E | dbt-ops (batch review) |
 | "tengo data contracts" / "tengo ODCS" / "ya tengo los contracts definidos" | F | Contract-first (ODCS → dbt) |
+| "quiero crear una demo de..." / "genera una demo de X para [cliente]" / "necesito un repo de demo" | G | Phase 0c → Demo Catalog → Phase 4-6 con TARGET_REPO_PATH |
 
 ### If unsure, ask:
 
@@ -472,8 +541,9 @@ This determines:
 - **New + deploy to Platform** → Phase 0 scaffold → full SDD workflow → Phase 6
 - **Existing + on Platform** → Phase 0b inspector with MCP + Terraform import → new features
 - **Existing + local only** → Phase 0b inspector (file-only) → new features
-- **Demo** → template catalog → skip to implementation
+- **Demo** → template catalog → skip to implementation (en este mismo repo)
 - **Has ODCS contracts** → Route F (contract-first)
+- **Generar demo en repo nuevo** → Route G: Phase 0c crea repo externo + TARGET_REPO_PATH → Phase 4-6
 
 ### Route F: Contract-First (ODCS → dbt)
 
