@@ -219,9 +219,32 @@ Before launching the subagent, ask the user these source availability questions 
 > Specs are at {TARGET_REPO_PATH}/specs/
 > ```
 
+### Phase 4b: Parse Gate (orchestrator)
+
+**Trigger:** Immediately after all Phase 4 subagents complete — before launching Phase 5.
+
+Run `dbt parse` against the project and check for errors:
+
+```bash
+# If TARGET_REPO_PATH is set (Route G):
+cd $TARGET_REPO_PATH && dbt parse
+
+# Otherwise:
+dbt parse
+```
+
+**If parse fails:**
+- Apply the Smart Retry Protocol: re-launch the responsible subagent (dbt-semantic for MetricFlow errors, dbt-developer for SQL/YAML errors) with the exact error message
+- Do NOT proceed to Phase 5 until parse is clean
+- Log the retry in `progress.md`
+
+**If parse passes:** update `progress.md` and proceed to Phase 5.
+
+> This gate exists because subagent validation is best-effort — `dbt parse` is the authoritative check. MetricFlow semantic YAML errors (ratio metrics referencing measures instead of simple metrics, invalid dimension expressions, missing time spines) are the most common failures caught here.
+
 ### Phase 5: Validation (dbt-reviewer)
 
-**Trigger:** All implementation subagents complete.
+**Trigger:** All implementation subagents complete AND Phase 4b parse gate passes.
 
 1. Launch `dbt-reviewer` subagent with paths to all spec files
 2. Subagent produces `specs/{feature_name}/review.md`
