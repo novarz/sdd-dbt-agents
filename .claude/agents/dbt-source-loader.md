@@ -69,6 +69,7 @@ For each missing source table, create a CSV seed with realistic sample data:
 - Include edge cases: NULLs, boundary values, dates spanning multiple periods
 - Use realistic value distributions (not all the same category)
 - **Lookup/catalog tables must have exactly 1 row per unique key** — duplicate keys in catalog seeds cause fan-out duplicates in downstream models (e.g. 2 rows per product_type in product_catalog × N loans = N duplicate loan_ids in dim_loan, breaking `unique` tests)
+- **Boolean filter columns (`is_active`, `is_deleted`) must be `true` for all demo rows that are referenced by FK** — if staging models filter `where cast(is_active as boolean) = true`, any seed row with `is_active = false` gets excluded. If other seeds FK into that row, relationship tests fail. For demos, set all referenced rows to active/true unless the spec explicitly requires inactive records
 - File path: `seeds/{source_name}/{table_name}.csv`
 
 **Configure seed schemas in `dbt_project.yml`** using the values from `project-config.yaml`:
