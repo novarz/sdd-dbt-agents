@@ -136,19 +136,40 @@ metrics:
 ```
 
 ### Ratio (numerator/denominator)
+
+> **CRITICAL — MetricFlow (dbt 1.6+):** ratio `type_params.numerator/denominator` reference **metrics**, NOT measures.
+> Referencing a measure directly causes `Parsing Error: The metric X does not exist`.
+> Always define a `simple` metric wrapping each measure first, then reference those in the ratio.
+
 ```yaml
 metrics:
+  # Step 1: wrap each measure in a simple metric
+  - name: {numerator_simple}
+    label: "{Human label}"
+    type: simple
+    type_params:
+      measure: {numerator_measure}   # ← measure name from semantic model
+
+  - name: {denominator_simple}
+    label: "{Human label}"
+    type: simple
+    type_params:
+      measure: {denominator_measure}  # ← measure name from semantic model
+
+  # Step 2: ratio references the simple metrics, not the measures
   - name: {ratio_metric}
     description: "{description}"
     type: ratio
     type_params:
       numerator:
-        name: {numerator_metric}
+        name: {numerator_simple}     # ← metric name, not measure
       denominator:
-        name: {denominator_metric}
-    filter:
-      - "{{ Dimension('entity__dimension') }} = 'value'"
+        name: {denominator_simple}   # ← metric name, not measure
+    filter: |
+      {{ Dimension('entity__dimension') }} = 'value'
 ```
+
+**Exception:** if a simple metric for the measure already exists (e.g. `total_exposure_ead` wraps `total_outstanding_balance`), reuse it as the numerator/denominator — don't create a duplicate.
 
 ### Conversion (funnel analysis)
 ```yaml
