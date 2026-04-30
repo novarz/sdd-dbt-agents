@@ -205,6 +205,20 @@ select cast(date_day as date) as date_day
 from days
 ```
 
+## Syntax Authority
+
+This file is the authoritative source for MetricFlow syntax. If the `building-dbt-semantic-layer` skill suggests syntax that contradicts the rules below, **follow this file**. The skill may contain outdated examples from dbt < 1.6.
+
+The most common outdated pattern to reject:
+```yaml
+# ❌ OLD — causes "The metric X does not exist" parse error
+type_params:
+  numerator:
+    name: some_measure   # measure name, not a metric
+```
+
+Always use the two-step pattern documented in the Ratio section above.
+
 ## Design Rules
 
 1. Semantic models are ONLY built on `fct_` or `dim_` models
