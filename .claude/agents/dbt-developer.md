@@ -86,6 +86,15 @@ YAML must include:
   - Copy classifications from `design.md` Data Classification Summary when available
 - `tests` for PKs (`not_null` + `unique`) and FKs (`relationships`) — **these are part of the model definition, not a separate testing task**
 
+> **dbt Fusion test syntax (required for dbt Platform cloud):** generic test arguments must go under `arguments:`, not at the top level. Both built-in tests (`relationships`, `accepted_values`) and custom tests use this format:
+> ```yaml
+> - relationships:
+>     arguments:
+>       to: ref('dim_customer')
+>       field: customer_id
+> ```
+> Top-level `to`/`field` triggers dbt102 deprecation error and blocks the run in Fusion cloud.
+
 > Generic tests for business-logic enums (`accepted_values`), custom data quality checks, and unit tests are the responsibility of the `dbt-tester` agent.
 
 ### Step 4: BUILD — adapt to available environment
