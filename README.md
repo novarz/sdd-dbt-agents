@@ -24,6 +24,7 @@ The framework adapts to where you are:
 | **D) Audit** | Health check an existing project | Nothing (inspector reads everything) |
 | **E) Ops** | Monitor production, diagnose failures, generate backlog | Nothing (dbt-ops reads via MCP) |
 | **F) Contracts** | Already have ODCS data contracts | Business questions + domain rules |
+| **G) Generate demo** | Create a fully-implemented demo dbt project in your own GitHub org | Target org/repo, warehouse, dbt Platform account |
 
 ---
 
@@ -173,7 +174,7 @@ After Phase 6, the `dbt-infra` agent auto-generates `.mcp.json`. For manual setu
 │   └── regions.md                     ← dbt Platform regions
 ├── specs/
 │   ├── templates/                     ← Pre-built specs by vertical
-│   │   └── banking-loan-risk/         ← Loan portfolio risk (Phase 1 ready)
+│   │   └── banking-loan-risk/         ← Loan portfolio risk (requirements.md ready, Route G generates the full project)
 │   ├── backlog/                       ← Improvement stories from dbt-ops
 │   └── ops/                           ← Health reports and batch reviews
 ├── terraform/
@@ -191,11 +192,14 @@ After Phase 6, the `dbt-infra` agent auto-generates `.mcp.json`. For manual setu
 | Branch | Contents |
 |--------|----------|
 | `main` | Framework only: orchestrator, agents, Terraform, scripts |
-| `projects/{name}` | Output of a full SDD run: SQL models, tests, YAML, Semantic Layer |
+
+**Project outputs live in separate repos**, not as branches of this repo. Route G creates a new GitHub repo in your org (e.g. `your-org/demo-banking`) with the full dbt project — SQL models, seeds, tests, Semantic Layer, and its own Terraform state.
 
 ```bash
-# See the difference between framework and a completed project
-git diff main...projects/loan-portfolio-risk
+# Example: the banking demo lives at
+# https://github.com/novarz/demo-banking
+# Clone it independently of the framework
+git clone https://github.com/novarz/demo-banking
 ```
 
 ---
