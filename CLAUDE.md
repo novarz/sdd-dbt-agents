@@ -51,7 +51,18 @@ This gives agents your actual table names, column types, lineage graph, and tran
 
 **Trigger:** Before launching any subagent, always run this check.
 
-1. **Detect dbt CLI** — determines which engine is available and its capabilities:
+1. **Ask where the dbt project should live:**
+
+   > ¿Dónde quieres que viva el proyecto dbt?
+   > **A) En este mismo repo** (`sdd-dbt-agents`) — rápido para explorar, prototipar o uso local
+   > **B) En un repo separado** — recomendado para producción, dbt Mesh, o demos distribuibles a otros equipos
+
+   - If **A**: continue in the current directory. No `TARGET_REPO_PATH` needed.
+   - If **B**: go to **Phase 0c** (create or clone the target repo, set `TARGET_REPO_PATH`). All subsequent phases operate on `TARGET_REPO_PATH`.
+
+   > **Mesh note:** option B is required for multi-project Mesh. Each domain project lives in its own repo; the framework orchestrates across all of them. A single session can manage N repos by setting `TARGET_REPO_PATH` per project.
+
+2. **Detect dbt CLI** — determines which engine is available and its capabilities:
    ```bash
    source scripts/detect-dbt.sh
    ```
@@ -63,21 +74,21 @@ This gives agents your actual table names, column types, lineage graph, and tran
    | dbt Cloud CLI | `dbt` | Deferral to cloud artifacts, `dbt environment` |
    | dbt Core | `dbt` | Standard CLI |
 
-2. Check if a dbt project exists:
+3. Check if a dbt project exists in the working directory (`dbt_project.yml`):
    ```bash
    ls dbt_project.yml
    ```
-3. **If no `dbt_project.yml`:** ask the user which warehouse they're targeting (BigQuery, Snowflake, Databricks, Redshift, DuckDB). Then create the scaffold: `dbt_project.yml`, `packages.yml`, folder structure. Use **DuckDB as default** for local dev if the user has no preference.
-4. **If no `profiles.yml`** and the user needs local execution (dbt Fusion or dbt Core — NOT dbt Cloud CLI):
+4. **If no `dbt_project.yml`:** ask the user which warehouse they're targeting (BigQuery, Snowflake, Databricks, Redshift, DuckDB). Then create the scaffold: `dbt_project.yml`, `packages.yml`, folder structure. Use **DuckDB as default** for local dev if the user has no preference.
+5. **If no `profiles.yml`** and the user needs local execution (dbt Fusion or dbt Core — NOT dbt Cloud CLI):
    ```bash
    ./scripts/generate-profiles.sh
    ```
    This reads warehouse connection from `project-config.yaml` and uses `env_var()` for sensitive values. The user must `source .env` before running dbt commands. Skip this step if using dbt Cloud CLI or only deploying via Phase 6.
-5. Check if `packages.yml` exists — if not, create it with `dbt-labs/dbt_utils` at minimum.
-6. Run `$DBT_CMD deps` to install packages.
-7. Only proceed to Phase 1 once the project compiles with `$DBT_CMD parse`.
+6. Check if `packages.yml` exists — if not, create it with `dbt-labs/dbt_utils` at minimum.
+7. Run `$DBT_CMD deps` to install packages.
+8. Only proceed to Phase 1 once the project compiles with `$DBT_CMD parse`.
 
-> This phase is skipped if `dbt_project.yml` already exists and `$DBT_CMD parse` passes.
+> Steps 3-8 are skipped if `dbt_project.yml` already exists and `$DBT_CMD parse` passes.
 
 ### Phase 0b: Project Inspection (dbt-inspector) — optional
 
@@ -568,13 +579,13 @@ When a user starts a conversation, determine which path to follow:
 > ¿Tienes data contracts (ODCS) ya definidos?
 
 This determines:
-- **New + no Platform** → Phase 0 scaffold → full SDD workflow
-- **New + deploy to Platform** → Phase 0 scaffold → full SDD workflow → Phase 6
+- **New + no Platform** → Phase 0 (A: same repo or B: new repo) → full SDD workflow
+- **New + deploy to Platform** → Phase 0 → full SDD workflow → Phase 6
 - **Existing + on Platform** → Phase 0b inspector with MCP + Terraform import → new features
 - **Existing + local only** → Phase 0b inspector (file-only) → new features
-- **Demo** → template catalog → skip to implementation (en este mismo repo)
+- **Demo** → template catalog → Phase 0 (A or B) → Phase 4-6
 - **Has ODCS contracts** → Route F (contract-first)
-- **Generar demo en repo nuevo** → Route G: Phase 0c crea repo externo + TARGET_REPO_PATH → Phase 4-6
+- **dbt Mesh / multi-project** → Phase 0 option B for each project → N × TARGET_REPO_PATH
 
 ### Route F: Contract-First (ODCS → dbt)
 
