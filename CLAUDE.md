@@ -317,6 +317,30 @@ If yes:
 
 If no: mark Phase 6 as skipped in `progress.md` and close the workflow.
 
+### Teardown (orchestrator)
+
+**Trigger:** User says "tear down the demo", "destroy the environment", "clean up", "remove the project", or similar.
+
+The user should never run Terraform directly. The orchestrator handles it:
+
+1. Confirm what will be destroyed:
+   > "This will remove the dbt Platform project and all associated resources (environments, jobs, Semantic Layer). Warehouse data (schemas, tables) will **not** be deleted. Confirm?"
+2. Ask the user to run `source .env` — Terraform needs credentials exported as env vars
+3. Detect which warehouse Terraform config to use:
+   ```bash
+   ls terraform/snowflake/terraform.tfstate 2>/dev/null && echo snowflake
+   ls terraform/databricks/terraform.tfstate 2>/dev/null && echo databricks
+   ls terraform/bigquery/terraform.tfstate 2>/dev/null && echo bigquery
+   ```
+   If `TARGET_REPO_PATH` is set, look in `$TARGET_REPO_PATH/terraform/` instead.
+4. Run destroy:
+   ```bash
+   cd terraform/{warehouse} && terraform destroy -auto-approve
+   ```
+5. Report: "dbt Platform project removed. Warehouse schemas persist — drop them manually if needed."
+
+> **Credentials are the only thing the user touches directly.** Everything else goes through Claude.
+
 ## Smart Retry Protocol
 
 When a subagent fails (build error, test failure, invalid SQL), the orchestrator applies this protocol **before** escalating to the user:
@@ -571,6 +595,7 @@ When a user starts a conversation, determine which path to follow:
 | "revisa los runs desde ayer" / "batch check" / "qué ha pasado esta semana" | E | dbt-ops (batch review) |
 | "tengo data contracts" / "tengo ODCS" / "ya tengo los contracts definidos" | F | Contract-first (ODCS → dbt) |
 | "quiero crear una demo de..." / "genera una demo de X para [cliente]" / "necesito un repo de demo" | G | Phase 0c → Demo Catalog → Phase 4-6 con TARGET_REPO_PATH |
+| "tear down" / "destroy the demo" / "clean up" / "remove the project" | Teardown | Confirm → source .env → terraform destroy |
 
 ### If unsure, ask:
 
