@@ -39,12 +39,12 @@ if ! command -v wizard &>/dev/null; then
   echo "ERROR: 'wizard' CLI not found. Install dbt Wizard or set execution_backend=claude-code." >&2
   exit 127
 fi
-# BYOK is mandatory for the CLI (no dbt platform managed model on this path), but the
-# provider is your choice: Anthropic, OpenAI, Azure, Bedrock, Gemini, or Snowflake Cortex.
-# Provider-agnostic check: accept EITHER a supported provider env var OR stored creds
-# from `wizard providers configure` (~/.dbt/wizard/provider-auth.json). Documented gap,
-# never a real credential in this repo.
-_wizard_auth_ok() {
+# Wizard needs a configured model provider (BYOK: Anthropic/OpenAI/Azure/Bedrock/Gemini/
+# Snowflake Cortex) or an otherwise-authenticated session. We do NOT hard-block on this:
+# auth mechanisms vary and Wizard is the authority. This is a best-effort hint only —
+# if we can't detect creds we warn and continue, letting `wizard` validate and (if truly
+# unauthenticated) fail with its own clear error, which the retry protocol then handles.
+_wizard_auth_hint_ok() {
   [ -f "${HOME}/.dbt/wizard/provider-auth.json" ] && return 0
   for v in ANTHROPIC_API_KEY OPENAI_API_KEY AZURE_OPENAI_API_KEY GEMINI_API_KEY \
            GOOGLE_API_KEY AWS_ACCESS_KEY_ID AWS_PROFILE SNOWFLAKE_ACCOUNT; do
@@ -52,11 +52,9 @@ _wizard_auth_ok() {
   done
   return 1
 }
-if ! _wizard_auth_ok; then
-  echo "ERROR: no dbt Wizard BYOK credentials found. Run 'wizard providers configure <provider>'" >&2
-  echo "       (e.g. snowflake, anthropic, bedrock, azure, gemini, openai) or export a provider" >&2
-  echo "       env var. See .env.example. Alternatively set execution_backend=claude-code." >&2
-  exit 3
+if ! _wizard_auth_hint_ok; then
+  echo "WARN: no provider credentials detected. If unauthenticated, run 'wizard providers" >&2
+  echo "      configure <provider>' or 'dbt-wizard login'. Continuing — wizard will verify." >&2
 fi
 
 # Metadata engine reads target/manifest.json — refresh project state before delegating.

@@ -24,9 +24,9 @@ if ! command -v wizard &>/dev/null; then
   echo "ERROR: 'wizard' CLI not found. Install dbt Wizard or set execution_backend=claude-code." >&2
   exit 127
 fi
-# Provider-agnostic BYOK check (see wizard-exec.sh): any supported provider env var OR
-# stored creds from `wizard providers configure`.
-_wizard_auth_ok() {
+# Best-effort auth hint only (see wizard-exec.sh): don't hard-block, since auth mechanisms
+# vary and Wizard is the authority. Warn and continue if we can't detect credentials.
+_wizard_auth_hint_ok() {
   [ -f "${HOME}/.dbt/wizard/provider-auth.json" ] && return 0
   for v in ANTHROPIC_API_KEY OPENAI_API_KEY AZURE_OPENAI_API_KEY GEMINI_API_KEY \
            GOOGLE_API_KEY AWS_ACCESS_KEY_ID AWS_PROFILE SNOWFLAKE_ACCOUNT; do
@@ -34,10 +34,9 @@ _wizard_auth_ok() {
   done
   return 1
 }
-if ! _wizard_auth_ok; then
-  echo "ERROR: no dbt Wizard BYOK credentials found. Run 'wizard providers configure <provider>'" >&2
-  echo "       or export a provider env var. See .env.example. Or set execution_backend=claude-code." >&2
-  exit 3
+if ! _wizard_auth_hint_ok; then
+  echo "WARN: no provider credentials detected. If unauthenticated, run 'wizard providers" >&2
+  echo "      configure <provider>' or 'dbt-wizard login'. Continuing — wizard will verify." >&2
 fi
 
 # Review committed changes on this branch vs base if the base exists; otherwise fall

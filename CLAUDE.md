@@ -539,12 +539,13 @@ strong at *governing* them. So decisions + gates stay here; execution goes to Wi
   **`.mcp.json` is kept**, not removed).
 
 **Prerequisites for `wizard`:**
-- **BYOK (provider-agnostic).** The Wizard CLI is always bring-your-own-key even when logged
-  into dbt platform — the platform-managed model exists only in the dbt platform web UI, not
-  the CLI. Any supported provider works (Anthropic API key, OpenAI, Azure, Bedrock, Gemini,
-  Snowflake Cortex). Claude Enterprise/subscription licenses are **not** allowed per Anthropic's
-  ToS; an Anthropic *API key* is fine. Configure via `wizard providers configure <provider>`
-  or a provider env var (see `.env.example`). One-time user config: `.dbt/wizard/config.toml.example`.
+- **BYOK (provider-agnostic).** On the supported path the Wizard CLI uses bring-your-own-key;
+  any supported provider works (Anthropic API key, OpenAI, Azure, Bedrock, Gemini, Snowflake
+  Cortex). Claude Enterprise/subscription licenses are **not** allowed per Anthropic's ToS; an
+  Anthropic *API key* is fine. Configure via `wizard providers configure <provider>`, a provider
+  env var (see `.env.example`), or `dbt-wizard login`. The `wizard-exec.sh` preflight is advisory
+  (warns, never blocks) so it works regardless of the auth mechanism. One-time user config:
+  `.dbt/wizard/config.toml.example`.
 - **Compiled `target/`.** Wizard's metadata engine reads `target/manifest.json`; `wizard-exec.sh`
   runs `dbt parse` first.
 - **Shared skills.** Both backends read the portable `sdd-execution-contract` skill
