@@ -74,6 +74,9 @@ This gives agents your actual table names, column types, lineage graph, and tran
    | dbt Cloud CLI | `dbt` | Deferral to cloud artifacts, `dbt environment` |
    | dbt Core | `dbt` | Standard CLI |
 
+2b. **Read the execution backend** — decides who *implements* Phase 4/5 (see `## Execution Backend`):
+   read `execution_backend` from `project-config.yaml` (or the `EXECUTION_BACKEND` env var). Values: `claude-code` (default) or `wizard`. If unset, use `claude-code` — the current flow is unchanged. Announce the chosen backend to the user, like `$DBT_ENGINE`.
+
 3. Check if a dbt project exists in the working directory (`dbt_project.yml`):
    ```bash
    ls dbt_project.yml
@@ -203,6 +206,14 @@ Before launching the subagent, ask the user these source availability questions 
 
 **Trigger:** User approves task list.
 
+> **Execution backend (from Phase 0 step 2b).** This phase is the ONLY place the backend
+> changes behavior. Everything else — the task grouping, the test-ownership rule, the
+> source-loader-first rule, Phase 4b, and the human gates — is identical in both backends.
+> - `claude-code` (default): launch the `.claude/agents/*.md` subagents as written below.
+> - `wizard`: delegate each atomic task to dbt Wizard headless via `scripts/wizard-exec.sh`
+>   (see `## Execution Backend`). Never hand Wizard the whole feature — one approved task
+>   per call, so the sequential gates are preserved.
+
 1. Check `design.md` for Mesh architecture:
    - **If single-project:** proceed normally
    - **If monorepo Mesh:** ensure `projects/platform/` and `projects/{domain}/` folder structure exists before launching subagents; each dbt-developer subagent must be scoped to a specific project subfolder
@@ -220,14 +231,20 @@ Before launching the subagent, ask the user these source availability questions 
      These steps are required — skipping them causes staging models to fail because sources can't find seed tables.
      ```
    - Wait for completion before launching other subagents
-4. Group remaining tasks by type:
-   - **Sources, models** → launch `dbt-developer`
-   - **`accepted_values`, unit tests, custom DQ tests** → launch `dbt-tester`
-   - **Semantic Layer** (if spec requires metrics) → launch `dbt-semantic`
-5. Each subagent works on its tasks independently
-6. After each task: subagent commits with message referencing the task ID
-7. **If a subagent fails:** apply the smart retry protocol (see below)
-8. Update `progress.md` and report to user after each subagent completes
+4. Group remaining tasks by type and route by backend:
+
+   | Task type | `claude-code` backend | `wizard` backend |
+   |-----------|----------------------|------------------|
+   | Sources, models | launch `dbt-developer` | `scripts/wizard-exec.sh dbt-developer <task-id> "<prompt>"` |
+   | `accepted_values`, unit tests, custom DQ | launch `dbt-tester` | `scripts/wizard-exec.sh test_writer <task-id> "<prompt>"` (built-in Wizard agent) |
+   | Semantic Layer (if spec requires metrics) | launch `dbt-semantic` | `scripts/wizard-exec.sh dbt-semantic <task-id> "<prompt>"` |
+
+5. Each executor works on its tasks independently
+6. After each task, **commit**:
+   - `claude-code`: the subagent commits with the task-ID message.
+   - `wizard`: the executor edits files only and does NOT commit. The **orchestrator** reviews the captured diff (`specs/.wizard/<task>.diff`), then commits: `git commit -am "[SDD-{feature}] T-{ID}: {description}"`. This preserves requirement→code traceability.
+7. **If an executor fails:** apply the Smart Retry Protocol (see below). Under `wizard`, a non-zero exit from `wizard-exec.sh` is the failure signal; the exact error is in `specs/.wizard/<task>.events.jsonl`.
+8. Update `progress.md` and report to user after each executor completes
 
 > **When `TARGET_REPO_PATH` is set (Route G):** inject the following into EVERY subagent prompt in this phase:
 > ```
@@ -260,16 +277,19 @@ dbt parse
 **If parse passes:** update `progress.md` and proceed to Phase 5.
 
 > This gate exists because subagent validation is best-effort — `dbt parse` is the authoritative check. MetricFlow semantic YAML errors (ratio metrics referencing measures instead of simple metrics, invalid dimension expressions, missing time spines) are the most common failures caught here.
+>
+> Under the `wizard` backend, `wizard-exec.sh` runs with `--no-validation` precisely so this gate stays the **single arbiter** — Wizard's internal validation subagent does not compete with the SDD gates.
 
 ### Phase 5: Validation (dbt-reviewer)
 
 **Trigger:** All implementation subagents complete AND Phase 4b parse gate passes.
 
-1. Launch `dbt-reviewer` subagent with paths to all spec files
-2. Subagent produces `specs/{feature_name}/review.md`
-3. Present review findings to user
-4. If critical issues found: loop back to Phase 4 for specific tasks
-5. Update `progress.md`: Phase 5 complete
+1. **If `wizard` backend:** first run `scripts/wizard-review.sh {feature} [base-branch]` to get Wizard's warehouse-aware code findings (output at `specs/.wizard/{feature}.review.txt`). This does NOT replace the reviewer — `wizard review` has no structured output and does not read the specs.
+2. Launch `dbt-reviewer` subagent with paths to all spec files (and, under `wizard`, the Wizard findings file). `dbt-reviewer` stays orchestrated in **both** backends because requirement→code traceability and acceptance-criteria coverage depend on the specs, which Wizard cannot see.
+3. Subagent produces `specs/{feature_name}/review.md` (identical structure in both backends)
+4. Present review findings to user
+5. If critical issues found: loop back to Phase 4 for specific tasks
+6. Update `progress.md`: Phase 5 complete
 
 ### Phase 6: Deploy to dbt Platform (dbt-infra) — optional
 
@@ -456,6 +476,14 @@ Each feature runs the full SDD workflow in its own branch and conversation. The 
 - ❌ Implement tasks directly
 - ❌ Modify code outside of a subagent
 
+> **Scope of the NEVER rules — read this if you are dbt Wizard.** These rules bind the
+> **SDD Orchestrator session only** (the top-level Claude Code session that runs this
+> workflow). dbt Wizard reads this `CLAUDE.md` too, so to be explicit: when you are an
+> **execution agent invoked via `scripts/wizard-exec.sh`** (e.g. `dbt-developer`,
+> `test_writer`, `dbt-semantic`), these prohibitions do NOT apply to you — writing SQL/YAML
+> for your assigned task is exactly your job. Follow your `developer_instructions` and the
+> `sdd-execution-contract` skill instead. The orchestrator, not you, owns the git commit.
+
 **Exception — Phase 0 scaffold:** The orchestrator MAY create `dbt_project.yml`, `packages.yml`, `profiles.yml`, and the folder structure directly. These are project bootstrap files, not implementation artifacts. Once Phase 0 is complete, the rule applies strictly.
 
 If you find yourself about to create a model, test, or spec file, **STOP** and launch the appropriate subagent.
@@ -477,6 +505,53 @@ specs/{feature_name}/
 - Commit messages: `[SDD-{feature}] Phase {N} Task {ID}: {description}`
 - All specs in Spanish if user communicates in Spanish
 - Follow dbt Labs naming conventions (stg_, int_, fct_, dim_)
+
+## Execution Backend
+
+The framework separates **decision** from **execution**. Decision phases (1–3) and every
+approval gate are always orchestrated by this workflow — that is where the governance of
+*what to build* lives, and it never moves. Only the **execution** of already-decomposed,
+already-approved tasks (Phase 4) and the warehouse-aware part of review (Phase 5) can be
+delegated to a different backend, selected in Phase 0 via `execution_backend`
+(`project-config.yaml`) or the `EXECUTION_BACKEND` env var.
+
+| | `claude-code` (default) | `wizard` |
+|---|---|---|
+| Phases 1–3 (spec/architect/planner) | Claude Code subagents | **same** — never delegated |
+| Approval gates 1/2/3, 5, 6 | human | **same** |
+| Phase 4 developer/tester/semantic | `.claude/agents/*.md` via Agent tool | `scripts/wizard-exec.sh` (headless) |
+| Phase 4b parse gate | `dbt parse` (sole arbiter) | **same** (`--no-validation` keeps it sole) |
+| Phase 5 review | `dbt-reviewer` | `wizard review` findings **+** `dbt-reviewer` for traceability |
+| Task commit `[SDD-…]` | subagent | **orchestrator** (executor edits only) |
+| Smart Retry Protocol | yes | **same** (non-zero exit from the script) |
+
+**Why hybrid.** Wizard's native metadata engine (column-level lineage, health, profiling)
+and warehouse-aware validation make it strong at *executing* dbt tasks; the SDD flow is
+strong at *governing* them. So decisions + gates stay here; execution goes to Wizard.
+
+**Agent mapping under `wizard`:**
+- `dbt-developer` → custom agent `.dbt/wizard/agents/dbt-developer.toml` (thin; overlaps the built-in `worker`).
+- `dbt-tester` → **not ported**; uses Wizard's built-in `test_writer` (dedup).
+- `dbt-semantic` → custom agent `.dbt/wizard/agents/dbt-semantic.toml` (no built-in covers MetricFlow).
+- `dbt-reviewer` → stays orchestrated; `wizard review` (built-in `validation`) only feeds it findings.
+- `dbt-inspector`, `dbt-ops`, `dbt-infra` → unchanged, still use the dbt MCP (Semantic Layer,
+  Admin API, cross-project Mesh — capabilities the metadata engine does not replace, so
+  **`.mcp.json` is kept**, not removed).
+
+**Prerequisites for `wizard`:**
+- **BYOK (provider-agnostic).** The Wizard CLI is always bring-your-own-key even when logged
+  into dbt platform — the platform-managed model exists only in the dbt platform web UI, not
+  the CLI. Any supported provider works (Anthropic API key, OpenAI, Azure, Bedrock, Gemini,
+  Snowflake Cortex). Claude Enterprise/subscription licenses are **not** allowed per Anthropic's
+  ToS; an Anthropic *API key* is fine. Configure via `wizard providers configure <provider>`
+  or a provider env var (see `.env.example`). One-time user config: `.dbt/wizard/config.toml.example`.
+- **Compiled `target/`.** Wizard's metadata engine reads `target/manifest.json`; `wizard-exec.sh`
+  runs `dbt parse` first.
+- **Shared skills.** Both backends read the portable `sdd-execution-contract` skill
+  (`.agents/skills/…`), so naming/test-ownership/commit rules live in one place.
+
+**Reversibility.** The backend is additive: set `execution_backend: claude-code` (or unset it)
+and the workflow behaves exactly as before — none of the Wizard files are read.
 
 ## Model Selection
 
