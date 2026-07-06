@@ -18,6 +18,18 @@
 governance:
   tier: "standard"
 
+# ─── Execution Backend ───────────────────────────────────────────────────────
+# Who implements Phase 4 (developer/tester/semantic) and assists Phase 5 (review).
+# Decision phases (1-3) and ALL approval gates stay orchestrated either way —
+# this only swaps the executor of already-decomposed, already-approved tasks.
+#
+#   claude-code — Phase 4/5 run via Claude Code subagents (.claude/agents/*.md). DEFAULT.
+#   wizard      — Phase 4/5 execution delegated to dbt Wizard headless
+#                 (scripts/wizard-exec.sh, scripts/wizard-review.sh). Requires BYOK
+#                 (ANTHROPIC_API_KEY in .env) and a compiled target/.
+# Additive: with claude-code the current flow is unchanged.
+execution_backend: "claude-code"  # claude-code | wizard
+
 # ─── Warehouse Platform ──────────────────────────────────────────────────────
 # Which warehouse to use. Determines which terraform/{platform}/ directory to apply.
 warehouse_platform: "snowflake"  # snowflake | bigquery | databricks
