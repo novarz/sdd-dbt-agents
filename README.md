@@ -47,6 +47,42 @@ The framework adapts to where you are:
 
 ---
 
+## Execution backend (dbt Wizard, opt-in)
+
+The framework separates **decision** from **execution**. It always orchestrates the
+*decision* phases itself; the *execution* of already-approved tasks can optionally be
+delegated to [dbt Wizard](https://docs.getdbt.com/docs/dbt-ai/about-dbt-wizard-cli)
+headless. Pick the backend in `project-config.yaml` (`execution_backend: claude-code | wizard`)
+or the `EXECUTION_BACKEND` env var. **Default is `claude-code` — the existing flow is unchanged.**
+
+| Phase | Orchestrated by this framework | Delegated to dbt Wizard (`wizard` backend) |
+|-------|-------------------------------|---------------------------------------------|
+| 1–3 spec / architect / planner | ✅ always (governance of *what to build*) | — |
+| all approval gates | ✅ always | — |
+| 4 developer / tester / semantic | `claude-code` subagents | `scripts/wizard-exec.sh` (headless `wizard exec`) |
+| 4b parse gate | ✅ `dbt parse` (sole arbiter) | ✅ same |
+| 5 review | `dbt-reviewer` | `wizard review` findings **+** `dbt-reviewer` for requirement→code traceability |
+
+**Why hybrid:** the sequential gates and requirement→code traceability stay in the
+framework; Wizard's native metadata engine and warehouse-aware validation do the
+implementation. The task commit (`[SDD-…]`) is always made by the orchestrator, so
+traceability holds in both backends. `.mcp.json` is kept — the metadata engine does not
+replace the Semantic Layer / Admin API / cross-project capabilities used by `dbt-ops`,
+`dbt-inspector`, and `dbt-infra`.
+
+**Prerequisites for `wizard`:** a compiled `target/` (the script runs `dbt parse` first)
+and a model provider configured (BYOK — Anthropic API key, OpenAI, Azure, Bedrock, Gemini,
+or Snowflake Cortex; Claude Enterprise/subscription licenses are not allowed per Anthropic's
+ToS). Configure with `wizard providers configure <provider>` or a provider env var (see
+`.env.example`); copy `.dbt/wizard/config.toml.example` to `~/.dbt/wizard/config.toml` for
+your global defaults. Custom agents live in `.dbt/wizard/agents/*.toml`; shared execution
+rules live in the portable skill `.agents/skills/sdd-execution-contract/`.
+
+To disable, set `execution_backend: claude-code` (or unset it) — none of the Wizard files
+are read.
+
+---
+
 ## Governance Tiers
 
 Set `governance.tier` in `project-config.yaml` to match your organization's maturity:
@@ -164,10 +200,17 @@ After Phase 6, the `dbt-infra` agent auto-generates `.mcp.json`. For manual setu
 
 ```
 ├── CLAUDE.md                          ← SDD orchestrator (the brain)
-├── project-config.example.yaml        ← Single config entry point
+├── project-config.example.yaml        ← Single config entry point (incl. execution_backend)
 ├── .env.example                       ← Credential templates
 ├── .claude/
-│   └── agents/                        ← 11 specialized subagents
+│   └── agents/                        ← 11 specialized subagents (claude-code backend)
+├── .agents/
+│   └── skills/
+│       └── sdd-execution-contract/    ← Portable Agent Skill (naming/test-ownership/commit rules)
+├── .dbt/
+│   └── wizard/
+│       ├── config.toml.example        ← User-level Wizard config template (copy to ~/.dbt/wizard/)
+│       └── agents/                    ← Wizard custom agents (dbt-developer, dbt-semantic)
 ├── docs/
 │   ├── governance-tiers.md            ← Tier system reference
 │   ├── data-classification.md         ← PII patterns and classification guide
@@ -184,7 +227,9 @@ After Phase 6, the `dbt-infra` agent auto-generates `.mcp.json`. For manual setu
 └── scripts/
     ├── detect-dbt.sh                  ← Engine detection (Fusion/Cloud CLI/Core)
     ├── generate-profiles.sh           ← profiles.yml generation
-    └── validate-config.sh             ← project-config.yaml validation
+    ├── validate-config.sh             ← project-config.yaml validation
+    ├── wizard-exec.sh                 ← Phase 4 headless delegation (wizard backend)
+    └── wizard-review.sh               ← Phase 5 warehouse-aware review (wizard backend)
 ```
 
 ### Branch convention
