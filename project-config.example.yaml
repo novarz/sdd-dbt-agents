@@ -27,7 +27,9 @@ dbt_platform:
   account_id: 000                          # REPLACE: your dbt Platform account ID
   host_url: "https://emea.dbt.com/api"    # REPLACE: see docs/regions.md
   project_name: "my_project"               # REPLACE
-  dbt_version: "versionless"               # versionless | latest-fusion | X.Y.0-latest
+  dbt_version: "fusion-stable"             # Snowflake default. fusion-stable | fusion-nightly | latest | X.Y.0-latest
+                                           # NOTE: Fusion tracks need snowflake + provider >=1.12. For bigquery/databricks,
+                                           # set an explicit non-fusion value (e.g. "latest") or bump that warehouse's provider.
 
 # ─── Git Repository ──────────────────────────────────────────────────────────
 # Supported providers: github, gitlab, azure_devops

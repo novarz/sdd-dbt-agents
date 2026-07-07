@@ -24,9 +24,9 @@ variable "project_name" {
 }
 
 variable "dbt_version" {
-  description = "dbt version for environments (use 'versionless' for latest)"
+  description = "dbt version / release track for environments. Snowflake defaults to the Fusion stable track. Options: fusion-stable | fusion-nightly | latest | X.Y.0-latest"
   type        = string
-  default     = "versionless"
+  default     = "fusion-stable"
 }
 
 # ─── Git repository ───────────────────────────────────────────────────────────
