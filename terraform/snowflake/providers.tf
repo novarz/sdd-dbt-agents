@@ -13,7 +13,7 @@ terraform {
   required_providers {
     dbtcloud = {
       source  = "dbt-labs/dbtcloud"
-      version = "~> 1.8.2"
+      version = "~> 1.12"  # >=1.12 required for Fusion release-track names (fusion-stable, etc.)
     }
     null = {
       source  = "hashicorp/null"
