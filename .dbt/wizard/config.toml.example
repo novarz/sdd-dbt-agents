@@ -1,0 +1,34 @@
+# dbt Wizard — USER-LEVEL config template (NOT read from this repo).
+#
+# dbt Wizard only reads config.toml from your home directory, not from the
+# project. This file is documentation: copy it to ~/.dbt/wizard/config.toml
+# and edit, as a one-time per-machine setup, ONLY if you use EXECUTION_BACKEND=wizard.
+#
+#   mkdir -p ~/.dbt/wizard
+#   cp .dbt/wizard/config.toml.example ~/.dbt/wizard/config.toml
+#
+# The SDD scripts (scripts/wizard-exec.sh, scripts/wizard-review.sh) pass model,
+# sandbox and approval as explicit CLI flags, so the hybrid flow works even if you
+# skip this file. These are just your global defaults for ad-hoc `wizard` sessions.
+
+# Default model for new sessions. Execution agents (developer/tester/semantic)
+# map to sonnet in the SDD model table; opus is available if you prefer.
+model = "claude-sonnet-4-6"
+
+# When Wizard asks before executing a command: on-request | on-failure | never
+approval_policy = "on-request"
+
+# Shell sandbox policy: read-only | workspace-write | danger-full-access
+sandbox_mode = "workspace-write"
+
+# Mark this repo as trusted so Wizard doesn't re-prompt (use YOUR absolute path).
+# [projects."/absolute/path/to/sdd-dbt-agents"]
+# trust_level = "trusted"
+
+# Optional: expose the dbt MCP server to Wizard (Semantic Layer, Admin API,
+# cross-project Mesh — capabilities the native metadata engine does NOT cover).
+# Prefer the CLI helper, which writes this section for you:
+#   wizard mcp add dbt --url <DBT_MCP_ENDPOINT>
+#   wizard mcp login dbt
+# [mcp_servers.dbt]
+# command = "<DBT_MCP_ENDPOINT>"
